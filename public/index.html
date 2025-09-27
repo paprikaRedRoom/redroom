@@ -370,7 +370,7 @@
 
             // --- MARKET CAP LOGIC ---
             const targetMarketCap = 130000;
-            let currentMarketCap = 6700; // The starting market cap
+            let currentMarketCap = 6100; // The starting market cap
 
             const progressElement = document.getElementById('market-cap-progress');
             const textElement = document.getElementById('market-cap-text');
@@ -418,7 +418,7 @@
             // --- NEW: COUNTDOWN TIMER LOGIC ---
             const countdownElement = document.getElementById('countdown');
             // Set the target time: 2 hours from now
-            const twoHoursFromNow = new Date().getTime() + (60 * 60 * 1000);
+            const twoHoursFromNow = new Date().getTime() + (10 * 60 * 1000);
 
             // 10 seconds for test
             // const twoHoursFromNow = new Date().getTime() + (10 * 1000);
@@ -1041,6 +1041,11 @@
 
         window.execute_character = async function() {
             if (!currentVrm) { return; }
+
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio.currentTime = 0;
+            }
 
             const expressionManager = currentVrm.expressionManager;
             expressionManager.setValue('sad', 1.0);
