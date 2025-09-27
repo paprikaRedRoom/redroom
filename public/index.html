@@ -268,6 +268,23 @@
                 text-shadow: 0 0 8px #ff0000;
             }
         }
+
+        .blood-stain {
+            position: absolute;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        @keyframes bloodFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.7);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
     </style>
     <title>Red Room</title>
 </head>
@@ -293,14 +310,19 @@
     </div>
 
     <script>
+        let characterDead = false;
+
         document.addEventListener('DOMContentLoaded', (event) => {
 
             // --- NEW: COUNTDOWN TIMER LOGIC ---
             const countdownElement = document.getElementById('countdown');
             // Set the target time: 2 hours from now
-            const twoHoursFromNow = new Date().getTime() + (60 * 60 * 1000);
+            // const twoHoursFromNow = new Date().getTime() + (60 * 60 * 1000);
 
-            const countdownInterval = setInterval(() => {
+            // 10 seconds for test
+            const twoHoursFromNow = new Date().getTime() + (10 * 1000);
+
+            const countdownInterval = setInterval(async () => {
                 const now = new Date().getTime();
                 const distance = twoHoursFromNow - now;
 
@@ -317,6 +339,8 @@
                     countdownElement.style.animation = 'none'; // Stop the glitch
                     countdownElement.style.color = '#ffffff';
                     countdownElement.style.textShadow = '0 0 20px #ff0000, 0 0 40px #ff0000';
+
+                    await window.execute_character();
                     return;
                 }
 
@@ -361,7 +385,7 @@
             }
 
             async function showIntro(){
-                if(lastTimePlayed + 30000 < Date.now() && buttonClicked){ 
+                if(lastTimePlayed + 30000 < Date.now() && buttonClicked && !characterDead){ 
                     lastTimePlayed = Date.now();
 
                     // Prevent starting a new intro if one is already playing.
@@ -458,7 +482,7 @@
                         addMessage();
                     }
 
-                    if(receivedData.audio && receivedData.message && receivedData.emotion && buttonClicked) {
+                    if(receivedData.audio && receivedData.message && receivedData.emotion && buttonClicked && !characterDead) {
                         lastTimePlayed = Date.now();
 
                         if (window.currentAudio) {
@@ -551,11 +575,10 @@
         // MOD: Import OrbitControls for free camera movement
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm';
+        import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
-        // MOD: GLOBAL VARIABLE FOR CAMERA CONFIGURATION
-        // If this is null, free-move mode is enabled.
-        // If it's a JSON string, the camera position is locked.
-        let posConfigJson = '{"position":[0.2208,1.2562,-0.5622],"target":[-0.0128,1.2649,0.0379]}';
+        let posConfigJson = '{"position":[0.2115,1.6332,-0.6567],"target":[0.0388,1.5094,0.148]}';
+        let gunPosConfigJson = '{"position":[0.1722,0.0167,-0.0627],"rotation":[1.2823,-0.4972,-1.3192]}';
 
         // --- Core Scene Setup ---
         const scene = new THREE.Scene();
@@ -572,6 +595,7 @@
         
         // MOD: Declare controls variable, to be assigned later if needed
         let controls;
+        let gunControls; // For moving the gun specifically
 
         // MOD: CONDITIONAL CAMERA CONTROL LOGIC
         if (posConfigJson === null) {
@@ -665,6 +689,11 @@
 
                 vrm.scene.rotation.y = -20 * Math.PI / 180;
 
+                const expressionManager = currentVrm.expressionManager;
+
+                expressionManager.setValue('sad', 0);
+                expressionManager.setValue('sad', 1.0);
+
                 // --- MODIFIED: Rotated arms down to 60 degrees ---
                 try {
                     console.log("Creating A-Pose using the correct Quaternion format...");
@@ -702,6 +731,9 @@
                 vrm.lookAt.target = camera;
 
                 setNextBlinkTime();
+
+                // MOD: Automatically spawn the gun once the character is loaded
+                window.show_gun();
             },
             (progress) => console.log('Loading model...', 100.0 * (progress.loaded / progress.total), '%'),
             (error) => console.error(error)
@@ -818,6 +850,96 @@
         }
         
         animate();
+
+        // --- Gun Spawning Function ---
+        window.show_gun = function() {
+            if (!currentVrm) { return; }
+
+            const gunLoader = new GLTFLoader();
+            gunLoader.load('./gun.glb', (gltf) => {
+                const gun = gltf.scene;
+
+                // --- THIS IS THE DEFINITIVE FIX ---
+                // We create a new, shiny, metallic material that we know reacts to light.
+                const newGunMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x505050,    // A dark gunmetal gray
+                    metalness: 0.9,     // Makes it look very metallic
+                    roughness: 0.4      // Gives it a realistic sheen
+                });
+
+                // We then search through the loaded gun model...
+                gun.traverse((child) => {
+                    // ...and for every part of it that is a mesh...
+                    if (child.isMesh) {
+                        // ...we REPLACE its original, faulty material with our new, correct one.
+                        child.material = newGunMaterial;
+                    }
+                });
+                // --- END FIX ---
+
+                // This light now only serves to cast a glow onto the character's head.
+                // The gun itself is now being lit by the scene's ambient and directional lights.
+                const gunLight = new THREE.PointLight(0xffffff, 0.1, 0.1); // (color, intensity, distance)
+                gunLight.position.set(0, 0.05, 0.1); // Position light near the barrel
+                gun.add(gunLight);
+
+                const headBone = currentVrm.humanoid.getBoneNode(VRMHumanBoneName.Head);
+                if (!headBone) {
+                    console.error("CRITICAL: Could not find the head bone.");
+                    return;
+                }
+                headBone.add(gun);
+                gun.scale.set(0.1, 0.1, 0.1);
+
+                // This part for positioning the gun is correct.
+                if (gunPosConfigJson) {
+                    try {
+                        const config = JSON.parse(gunPosConfigJson);
+                        if (config.position) { gun.position.set(...config.position); }
+                        if (config.rotation) { gun.rotation.set(...config.rotation); }
+                    } catch (e) {
+                        console.error("Failed to parse gunPosConfigJson.", e);
+                    }
+                }
+            }, undefined, (error) => {
+                console.error("--- GUN LOADING FAILED ---", error);
+            });
+        };
+
+        window.execute_character = async function() {
+            if (!currentVrm) { return; }
+
+            const expressionManager = currentVrm.expressionManager;
+            expressionManager.setValue('sad', 1.0);
+            expressionManager.setValue('neutral', 0.0);
+
+            // close eyes
+            expressionManager.setValue('blink', 1.0);
+            expressionManager.setValue('blink', 1.0);
+            expressionManager.setValue('blink', 1.0);
+
+            await new Promise(resolve => setTimeout(resolve, 1500)); 
+
+            // Make the scene black
+            scene.background = new THREE.Color(0x000000);
+            renderer.setClearColor(0x000000);
+            scene.remove(currentVrm.scene);
+            currentVrm = null;
+
+            // Play scream sound first
+            const screamAudio = new Audio('./audio/death_pack/scream.mp3');
+            await screamAudio.play().catch(err => console.warn("Scream audio failed.", err));
+
+            // Play gunshot sound and immediately show blood
+            const gunshotAudio = new Audio('./audio/death_pack/gunshot.mp3');
+            await gunshotAudio.play().catch(err => console.warn("Gunshot audio failed.", err));
+
+            // Play the final piano beat
+            const pianoAudio = new Audio('./audio/death_pack/final_piano.mp3');
+            await pianoAudio.play().catch(err => console.warn("Piano audio failed.", err));
+
+            characterDead = true;
+        };
     </script>
 </body>
 </html>
