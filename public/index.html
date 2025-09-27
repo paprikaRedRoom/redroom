@@ -142,6 +142,7 @@
             animation: slideIn 0.5s ease-out, textflicker 0.04s infinite alternate;
             word-wrap: break-word;
             color: #ff0000; /* Red text */
+            font-size: 1.5rem !important;
         }
 
         /* Buttons and UI Elements */
@@ -477,7 +478,7 @@
                 messageElement.textContent = messages[messageIndex];
                 chatMessages.appendChild(messageElement);
 
-                if (chatMessages.children.length > 8) {
+                if (chatMessages.children.length > 7) {
                     chatMessages.removeChild(chatMessages.children[0]);
                 }
                 
@@ -660,6 +661,32 @@
             
             const wsClient = new RobustWebSocketClient();
             wsClient.connect();
+
+            // dummy chats generator
+            // setInterval(() => {
+            //     if(buttonClicked && !characterDead && !ransomPaid){
+            //         const dummyUsers = ["Alice", "Bob", "Charlie", "Dave", "Eve", "Frank", "Grace", "Heidi"];
+            //         const dummyMessages = [
+            //             "We need to help her!",
+            //             "Is anyone else seeing this?",
+            //             "This is so scary...",
+            //             "I can't believe this is happening.",
+            //             "Somebody call the police!",
+            //             "How much time is left?",
+            //             "Stay strong, Mira!",
+            //             "This is intense.",
+            //             "I hope she makes it.",
+            //             "Sending positive vibes!"
+            //         ];
+                    
+            //         const randomUser = dummyUsers[Math.floor(Math.random() * dummyUsers.length)];
+            //         const randomMessage = dummyMessages[Math.floor(Math.random() * dummyMessages.length)];
+                    
+            //         messages.push(`${randomUser}: ${randomMessage}`);
+            //         addMessage();
+            //     }
+            // }, 5000); // Every 5 seconds
+
         });
 
 
