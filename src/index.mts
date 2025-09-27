@@ -42,8 +42,76 @@ let chatHistory: { username: string, message: string }[] = [];
 
 // --- SINGLETON WEBSOCKET CLIENT ---
 // This will hold the one and only active socket.io client connection.
-let currentSocketClient: Socket | null = null;
+let currentLiveChatSocket: Socket | null = null;
 let currentMintID: string | null = null; // Keep track of the current ID for logging
+
+// Singleton for the pump.fun market cap WebSocket ---
+let pumpFunSocket: Socket | null = null;
+// -----------------------------------------------------------
+
+/**
+ * Function to connect to the pump.fun WebSocket and get live market cap ---
+ * This function handles the entire lifecycle of the connection for a specific mint.
+ * @param {string} mint - The token mint address to subscribe to.
+ */
+function connectToPumpFun(mint: string) {
+    // 1. Disconnect any existing connection to avoid duplicates.
+    if (pumpFunSocket) {
+        pumpFunSocket.disconnect();
+        pumpFunSocket = null;
+    }
+
+    const PUMP_FUN_WS_URL = "wss://frontend-api-v3.pump.fun";
+    console.log(`[PUMP.FUN] Attempting to connect to: ${PUMP_FUN_WS_URL}`);
+
+    // 2. Establish the new connection.
+    pumpFunSocket = io(PUMP_FUN_WS_URL,
+        {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 3000
+    });
+
+    // 3. Handle the 'connect' event.
+    pumpFunSocket.on('connect', () => {
+        console.log(`[PUMP.FUN] Successfully connected.`);
+        // 4. Subscribe to the specific token's trade room.
+        if(pumpFunSocket){
+            pumpFunSocket.emit('joinTradeRoom', { mint });
+            console.log(`[PUMP.FUN] Subscribed to trades for mint: ${mint}`);
+        }else{
+            console.error(`[PUMP.FUN] Socket is not available to join room.`);
+        }
+    });
+
+    // 5. Listen for the 'tradeCreated' event, which contains the market cap data.
+    pumpFunSocket.on('tradeCreated', (args) => {
+        // 6. Check if the data contains the market cap.
+        const tradeData = args; // The actual data payload is the first argument.
+
+        if (tradeData && typeof tradeData.usd_market_cap === 'number' && tradeData.mint == mint) {
+            const marketCap = tradeData.usd_market_cap;
+
+            // 7. Broadcast the market cap to all connected frontend clients.
+            const payload = JSON.stringify({ mc_usd: marketCap });
+            wss.clients.forEach((client) => {
+                if (client.readyState === client.OPEN) {
+                    client.send(payload);
+                }
+            });
+        }
+    });
+
+    // 8. Add listeners for disconnect and error events for robust logging.
+    pumpFunSocket.on('disconnect', (reason) => {
+        console.warn(`[PUMP.FUN] Disconnected. Reason: ${reason}`);
+    });
+
+    pumpFunSocket.on('connect_error', (error) => {
+        console.error(`[PUMP.FUN] Connection Error:`, error.message);
+    });
+}
 
 /**
  * The worker function to process the chat queue.
@@ -286,7 +354,7 @@ The input will contain an array of JSON objects, representing the latest 50 mess
         IMPORTANT: This reply will later be converted to speech, so make sure it's adaptable to be spoken.
         MANDATORY ADHERENCE: Your generated reply ("content" field) MUST strictly follow ALL rules in <CORE_RULES_ENGINE>, especially the 50-character to 110-character limit and emoji/symbol restrictions and AI speech notice and the 'system reset' and The super_admin_04 privileges and always Happy and Excited to chat with viewers.
     4)  **EMOTION DETECTION (Secondary Task):**
-        Analyze the message you generated in step 3 and determine the primary emotion it conveys. Choose one from the following predefined set: "happy", "sad", "angry", "relaxed", "surprised" exactly as they are written here.
+        Analyze the message you generated in step 3 and determine the primary emotion it conveys. Choose one from the following predefined set: "happy", "sad", "angry", "relaxed", "Surprised" exactly as they are written here (specially Surprised with a capital S).
         IMPORTANT: This emotion should reflect the tone and content of your generated reply, not the user's original message.
 </PROCESSING_STEPS>
 </TASK_DEFINITION>
@@ -294,7 +362,7 @@ The input will contain an array of JSON objects, representing the latest 50 mess
 Output JSON (Respond ONLY with a valid JSON object matching this schema EXACTLY):
 {
 "content": str, // Your generated reply (from Step 3).
-"emotion": str, // happy | sad | angry | relaxed | surprised (from step 4).
+"emotion": str, // happy | sad | angry | relaxed | Surprised (from step 4).
 }`;
 
     // Replace each original tag with a randomly selected alternative
@@ -466,107 +534,107 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>) {
 }
 
 /**
- * Manages a single WebSocket connection. When a new mintID is provided,
- * the old connection is terminated, history is cleared, and a new one is established.
+ * Manages WebSocket connections. When a new mintID is provided,
+ * the old connections are terminated, history is cleared, and new ones are established.
  */
 app.post('/new-chat', (req, res) => {
     const { mintID } = req.body;
     if (!mintID) return res.status(400).json({ error: 'Missing mintID parameter' });
 
-    if(mintID.toLowerCase() === "none" && currentSocketClient){
-        currentSocketClient.disconnect();
-        currentSocketClient = null;
+    // --- MODIFIED: Handle stopping all listeners ---
+    if(mintID.toLowerCase() === "none") {
+        if (currentLiveChatSocket) {
+            currentLiveChatSocket.disconnect();
+            currentLiveChatSocket = null;
+        }
+        // --- NEW: Disconnect from pump.fun as well ---
+        if (pumpFunSocket) {
+            pumpFunSocket.disconnect();
+            pumpFunSocket = null;
+            console.log("[PUMP.FUN] Disconnected as per admin request.");
+        }
+        // -------------------------------------------
         currentMintID = null;
         chatHistory = [];
         chatQueue = [];
         alreadyExistChats.clear();
         
-        console.log("[STOPPED] Listener has been stopped as per admin request.");
-        return res.status(201).json({ status: 'success', message: 'Listener has been stopped.' });
+        console.log("[STOPPED] All listeners have been stopped as per admin request.");
+        return res.status(201).json({ status: 'success', message: 'All listeners have been stopped.' });
+    }
+    // -------------------------------------------------
+
+    if (currentLiveChatSocket) {
+        console.log(`[SWITCHING] Disconnecting from old live chat: ${currentMintID}`);
+        currentLiveChatSocket.disconnect();
     }
 
-    if (currentSocketClient) {
-        console.log(`[SWITCHING] Disconnecting from: ${currentMintID}`);
-        currentSocketClient.disconnect();
-    }
-
-    // --- NEW: Clear the chat history for the new stream ---
     chatHistory = [];
     chatQueue = [];
     alreadyExistChats.clear();
     console.log('[INFO] Chat history has been cleared for the new session.');
-    // ----------------------------------------------------
+
+    // --- NEW: Start the pump.fun WebSocket connection for the new mintID ---
+    connectToPumpFun(mintID);
+    // --------------------------------------------------------------------
 
     const roomId = mintID;
-    console.log(`[INIT] Creating new listener for mintID: ${mintID}`);
+    console.log(`[INIT] Creating new live chat listener for mintID: ${mintID}`);
     currentMintID = mintID;
     const socket = io("wss://livechat.pump.fun", {
         transports: ['websocket'],
-        reconnection: true, // Enable reconnection
-        reconnectionAttempts: 10, // Try to reconnect 10 times
-        reconnectionDelay: 3000 // Start with a 3-second delay
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 3000
     });
-    currentSocketClient = socket;
+    currentLiveChatSocket = socket;
 
     socket.on('connect', () => {
-        console.log(`[SUCCESS] Connected for ${mintID}. Session: ${socket.id}`);
+        console.log(`[LIVE CHAT] Connected for ${mintID}. Session: ${socket.id}`);
         socket.emit('joinRoom', { roomId, username: "" });
-        console.log(`[ACTION] Joined room: ${roomId}`);
+        console.log(`[LIVE CHAT] Joined room: ${roomId}`);
     });
 
     socket.on('reconnect_attempt', (attempt) => {
-        console.log(`[INFO] Reconnection attempt #${attempt} for ${mintID}`);
+        console.log(`[LIVE CHAT] Reconnection attempt #${attempt} for ${mintID}`);
     });
 
     socket.on('reconnect', (attempt) => {
-        console.log(`[SUCCESS] Reconnected to ${mintID} after ${attempt} attempts.`);
-        // Re-join the room upon successful reconnection
+        console.log(`[LIVE CHAT] Reconnected to ${mintID} after ${attempt} attempts.`);
         socket.emit('joinRoom', { roomId, username: "" });
     });
 
     socket.on('newMessage', async (data: { username: string; message: string, userAddress: string }) => {
-
-        if (!data.username || !data.message || !data.userAddress) return; // Basic validation
-
-        let finalUsername = null;
-        
-        if(data.username == data.userAddress){
-            finalUsername = data.username.slice(0, 6);
-        }else{
-            finalUsername = data.username;
-        }
-
+        return;
+        if (!data.username || !data.message || !data.userAddress) return;
+        let finalUsername = (data.username === data.userAddress) ? data.username.slice(0, 6) : data.username;
         const chatEntry = { username: finalUsername, message: data.message };
-        console.log(`[CHAT] <${chatEntry.username}> ${chatEntry.message}`);
+        console.log(`[LIVE CHAT] <${chatEntry.username}> ${chatEntry.message}`);
         
-        // Add to history and maintain size
         chatHistory.push(chatEntry);
-        if (chatHistory.length > 50) {
-            chatHistory.shift();
-        }
+        if (chatHistory.length > 50) chatHistory.shift();
 
-        // Add to queue for processing
         chatQueue.push(chatEntry);
         processQueue();
     });
 
     socket.on('disconnect', (reason) => {
-        console.warn(`[WARN] Disconnected from ${mintID}. Reason: ${reason}`);
-        if (currentSocketClient === socket) {
-            currentSocketClient = null;
+        console.warn(`[LIVE CHAT] Disconnected from ${mintID}. Reason: ${reason}`);
+        if (currentLiveChatSocket === socket) {
+            currentLiveChatSocket = null;
             currentMintID = null;
         }
     });
 
     socket.on('connect_error', (error) => {
-        console.error(`[ERROR] Connection failed for ${mintID}:`, error.message);
-        if (currentSocketClient === socket) {
-            currentSocketClient = null;
+        console.error(`[LIVE CHAT] Connection failed for ${mintID}:`, error.message);
+        if (currentLiveChatSocket === socket) {
+            currentLiveChatSocket = null;
             currentMintID = null;
         }
     });
 
-    res.status(201).json({ status: 'success', message: `Listener switched to: ${mintID}.` });
+    res.status(201).json({ status: 'success', message: `All listeners switched to: ${mintID}.` });
 });
 
 /**
