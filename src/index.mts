@@ -33,14 +33,12 @@ const elevenlabs = new ElevenLabsClient({
 const alreadyExistChats = new Set();
 
 // This is our waiting list for incoming chat requests.
-const chatQueue: { username: string, message: string }[] = [];
+let chatQueue: { username: string, message: string }[] = [];
 // This flag acts as a lock to ensure only one chat is processed at a time.
 let isProcessing = false;
-// A simple lock to prevent race conditions when updating the JSON file
-let isUpdatingConfig = false;
 
-// A running list of the last 10 messages for AI context ---
-const chatHistory: { username: string, message: string }[] = [];
+// A running list of the last 50 messages for AI context ---
+let chatHistory: { username: string, message: string }[] = [];
 
 // --- SINGLETON WEBSOCKET CLIENT ---
 // This will hold the one and only active socket.io client connection.
@@ -479,6 +477,10 @@ app.post('/new-chat', (req, res) => {
         currentSocketClient.disconnect();
         currentSocketClient = null;
         currentMintID = null;
+        chatHistory = [];
+        chatQueue = [];
+        alreadyExistChats.clear();
+        
         console.log("[STOPPED] Listener has been stopped as per admin request.");
         return res.status(201).json({ status: 'success', message: 'Listener has been stopped.' });
     }
@@ -489,7 +491,9 @@ app.post('/new-chat', (req, res) => {
     }
 
     // --- NEW: Clear the chat history for the new stream ---
-    chatHistory.length = 0;
+    chatHistory = [];
+    chatQueue = [];
+    alreadyExistChats.clear();
     console.log('[INFO] Chat history has been cleared for the new session.');
     // ----------------------------------------------------
 
@@ -499,7 +503,7 @@ app.post('/new-chat', (req, res) => {
     const socket = io("wss://livechat.pump.fun", {
         transports: ['websocket'],
         reconnection: true, // Enable reconnection
-        reconnectionAttempts: 5, // Try to reconnect 5 times
+        reconnectionAttempts: 10, // Try to reconnect 10 times
         reconnectionDelay: 3000 // Start with a 3-second delay
     });
     currentSocketClient = socket;
@@ -708,43 +712,6 @@ app.get('/admin/dashboard', requireAuth, (req, res) => {
     res.send(html);
 });
 
-app.post('/admin/select-forwarder', requireAuth, (req, res) => {
-    const { url } = req.body;
-    const filePath = path.join(__dirname, 'data', 'forwarders.json');
-    try {
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
-        let forwarders: { url: string; isUsageLimited: boolean; selected: boolean; }[] = JSON.parse(fileContent);
-        forwarders.forEach(f => { f.selected = (f.url === url); });
-        fs.writeFileSync(filePath, JSON.stringify(forwarders, null, 4));
-        console.log(`Admin manually selected forwarder: ${url}`);
-    } catch (error) {
-        console.error("Error updating forwarder selection:", error);
-    }
-    res.redirect('/admin/dashboard');
-});
-
-// NEW: Endpoint to set the mintID from the admin panel
-app.post('/admin/set-mint-id', requireAuth, (req, res) => {
-    const { mintID } = req.body;
-    if (!mintID) {
-        return res.status(400).redirect('/admin/dashboard');
-    }
-
-    // check if the mintID ends with 'pump' then remove it
-    // const cleanedMintID = mintID.endsWith('pump') ? mintID.slice(0, -4) : mintID;
-
-    const port = process.env.PORT || 8000;
-    axios.post(`http://localhost:${port}/new-chat`, { mintID: mintID })
-        .then(() => {
-            console.log("Admin successfully set new Mint ID listener:", mintID);
-            res.redirect('/admin/dashboard');
-        })
-        .catch(err => {
-            console.error("Failed to set Mint ID via internal API call:", err.message);
-            res.status(500).send("Failed to update Mint ID listener.");
-        });
-});
-
 /**
  * Accepts a POST request with a username and message to test the
  * chat processing functionality directly.
@@ -770,6 +737,40 @@ app.post('/admin/send-chat', (req, res) => {
     processQueue();
 
     res.redirect('/admin/dashboard');
+});
+
+app.post('/admin/select-forwarder', requireAuth, (req, res) => {
+    const { url } = req.body;
+    const filePath = path.join(__dirname, 'data', 'forwarders.json');
+    try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        let forwarders: { url: string; isUsageLimited: boolean; selected: boolean; }[] = JSON.parse(fileContent);
+        forwarders.forEach(f => { f.selected = (f.url === url); });
+        fs.writeFileSync(filePath, JSON.stringify(forwarders, null, 4));
+        console.log(`Admin manually selected forwarder: ${url}`);
+    } catch (error) {
+        console.error("Error updating forwarder selection:", error);
+    }
+    res.redirect('/admin/dashboard');
+});
+
+// NEW: Endpoint to set the mintID from the admin panel
+app.post('/admin/set-mint-id', requireAuth, (req, res) => {
+    const { mintID } = req.body;
+    if (!mintID) {
+        return res.status(400).redirect('/admin/dashboard');
+    }
+
+    const port = process.env.PORT || 8000;
+    axios.post(`http://localhost:${port}/new-chat`, { mintID: mintID })
+        .then(() => {
+            console.log("Admin successfully set new Mint ID listener:", mintID);
+            res.redirect('/admin/dashboard');
+        })
+        .catch(err => {
+            console.error("Failed to set Mint ID via internal API call:", err.message);
+            res.status(500).send("Failed to update Mint ID listener.");
+        });
 });
 
 app.use('/', express.static(path.join(__dirname, '../public')));
