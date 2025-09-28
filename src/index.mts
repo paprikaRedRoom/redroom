@@ -385,44 +385,23 @@ async function processChat(username: string, userMessage: string, history: { use
     const randomizedPrompt = generateRandomizedPrompt();
 
     const cleanUsername = username.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
-    const withTagsCleanUserMessage = userMessage.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
-    const cleanUserMessage = withTagsCleanUserMessage.replace(/\[.*?\]/g, '').trim();
-
+    const cleanUserMessage = userMessage.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
+    
     let aiRes: { content: any, emotion: any } = { content: null, emotion: null };
     let audioBuffer: any = null;
 
     const negativeKeywords = [
-      'rug', 'dump', 'dev', 'scam', '@'
-    ];
-
-    const promoPatterns = [
-        /https?:\/\/\S+/i,
-        /www\.\S+/i,
-        /discord\.gg/i,
-        /t\.me\//i,
-        /join now/i,
-        /free/i,
-        /!!+/,
-        /buy/i,
-        /promo/i,
-        /earn/i,
-        /giveaway/i,
-        /subscribe/i,
-        /follow/i,
-        /@everyone/i
+      'scam', '@'
     ];
 
     const messageIdentifier = cleanUsername + cleanUserMessage;
 
     if (
         !alreadyExistChats.has(messageIdentifier) &&
-        !/^\w+\.\w+$/.test(cleanUserMessage) &&
         !negativeKeywords.some((k: string) => cleanUserMessage.toLowerCase().includes(k)) &&
-        !promoPatterns.some(pattern => pattern.test(cleanUserMessage)) &&
         cleanUserMessage &&
         cleanUserMessage.length <= 200 &&
-        cleanUserMessage.length >= 2 &&
-        /[a-zA-Z0-9]/.test(cleanUserMessage)
+        cleanUserMessage.length >= 3
     ) {
         alreadyExistChats.add(messageIdentifier);
         // If the set gets too large, clear the oldest entry
@@ -453,7 +432,7 @@ async function processChat(username: string, userMessage: string, history: { use
                 generationConfig: { response_mime_type: "application/json" }
             };
 
-            const response = await axios.post(AI_API_URL, promptDataStructure, { headers: { 'Content-Type': 'application/json', timeout: 15000 } });
+            const response = await axios.post(AI_API_URL, promptDataStructure, { headers: { 'Content-Type': 'application/json', timeout: 0 } }); // No timeout
             const data = response.data;
 
             if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
