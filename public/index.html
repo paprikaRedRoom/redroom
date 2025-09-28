@@ -362,7 +362,7 @@
             // --- NEW: COUNTDOWN TIMER LOGIC ---
             const countdownElement = document.getElementById('countdown');
             // Set the target time: 2 hours from now
-            const twoHoursFromNow = new Date().getTime() + (10 * 60 * 1000);
+            const twoHoursFromNow = new Date().getTime() + (60 * 60 * 1000);
 
             // 10 seconds for test
             // const twoHoursFromNow = new Date().getTime() + (10 * 1000);
@@ -493,7 +493,7 @@
             class RobustWebSocketClient {
                 constructor(options = {}) {
                     this.ws = null;
-                    this.url = "ws://lbxachilles.fun:8000";
+                    this.url = "ws://localhost:8000";
 
                     this.reconnectInitialDelay = options.reconnectInitialDelay || 2000;
                     this.reconnectMaxDelay = options.reconnectMaxDelay || 30000;
@@ -742,11 +742,6 @@
 
                 vrm.scene.rotation.y = -20 * Math.PI / 180;
 
-                const expressionManager = currentVrm.expressionManager;
-
-                expressionManager.setValue('sad', 0);
-                expressionManager.setValue('sad', 1.0);
-
                 // --- MODIFIED: Rotated arms down to 60 degrees ---
                 try {
                     console.log("Creating A-Pose using the correct Quaternion format...");
@@ -808,6 +803,11 @@
                     expressionManager.setValue(activeEmotion, 0);
                     expressionManager.setValue(emotion, 1.0);
                     activeEmotion = emotion;
+                }
+
+                if (window.currentAudio) {
+                    window.currentAudio.pause();
+                    window.currentAudio.currentTime = 0;
                 }
 
                 window.currentAudio = new Audio(audioSrc);

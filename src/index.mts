@@ -1,6 +1,6 @@
 import express from 'express';
 import http from 'http';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws'; 
 import axios from 'axios';
 import 'dotenv/config';
 import cors from 'cors';
@@ -513,21 +513,16 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>) {
     return Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
 }
 
-/**
- * Manages WebSocket connections. When a new mintID is provided,
- * the old connections are terminated, history is cleared, and new ones are established.
- */
 app.post('/new-chat', (req, res) => {
     const { mintID } = req.body;
     if (!mintID) return res.status(400).json({ error: 'Missing mintID parameter' });
 
-    // --- MODIFIED: Handle stopping all listeners ---
     if(mintID.toLowerCase() === "none") {
         if (currentLiveChatSocket) {
             currentLiveChatSocket.disconnect();
             currentLiveChatSocket = null;
         }
-        // --- NEW: Disconnect from pump.fun as well ---
+        // -------------------------------------------
         if (pumpFunSocket) {
             pumpFunSocket.disconnect();
             pumpFunSocket = null;
@@ -554,19 +549,22 @@ app.post('/new-chat', (req, res) => {
     alreadyExistChats.clear();
     console.log('[INFO] Chat history has been cleared for the new session.');
 
-    // --- NEW: Start the pump.fun WebSocket connection for the new mintID ---
-    // connectToPumpFun(mintID);
-    // --------------------------------------------------------------------
-
     const roomId = mintID;
     console.log(`[INIT] Creating new live chat listener for mintID: ${mintID}`);
     currentMintID = mintID;
-    const socket = io("wss://livechat.pump.fun", {
-        transports: ['websocket'],
+    
+    const socketOptions: any = {
         reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 3000
-    });
+        transports: ['websocket'],
+        pingTimeout: 20000,
+        pingInterval: 25000,
+        extraHeaders: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        }
+    };
+
+    const socket = io("wss://livechat.pump.fun", socketOptions);
+
     currentLiveChatSocket = socket;
 
     socket.on('connect', () => {
@@ -574,6 +572,16 @@ app.post('/new-chat', (req, res) => {
         socket.emit('joinRoom', { roomId, username: "" });
         console.log(`[LIVE CHAT] Joined room: ${roomId}`);
     });
+
+    // --- (Optional but Recommended) ADD THESE LISTENERS FOR DEBUGGING ---
+    socket.on('ping', () => {
+        console.log(`[LIVE CHAT] Ping received for ${mintID}. A pong will be sent automatically.`);
+    });
+
+    socket.on('pong', () => {
+        console.log(`[LIVE CHAT] Pong received from server for ${mintID}. Connection is healthy.`);
+    });
+    // --- END OF DEBUG LISTENERS ---
 
     socket.on('reconnect_attempt', (attempt) => {
         console.log(`[LIVE CHAT] Reconnection attempt #${attempt} for ${mintID}`);
@@ -827,6 +835,6 @@ const PORT = Number(process.env.PORT) || 8000;
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Admin panel available at http://lbxachilles.fun:8000/admin/login`);
-    console.log(`Character available at http://lbxachilles.fun:8000/`);
+    console.log(`Admin panel available at http://localhost:8000/admin/login`);
+    console.log(`Character available at http://localhost:8000/`);
 });

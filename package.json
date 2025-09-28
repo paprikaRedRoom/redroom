@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.16.0",
+    "@types/socket.io-client": "^3.0.0",
     "axios": "^1.12.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
