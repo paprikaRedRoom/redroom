@@ -398,10 +398,11 @@ async function processChat(username: string, userMessage: string, history: { use
 
     if (
         !alreadyExistChats.has(messageIdentifier) &&
+        !/^\w+\.\w+$/.test(cleanUserMessage) &&
         !negativeKeywords.some((k: string) => cleanUserMessage.toLowerCase().includes(k)) &&
         cleanUserMessage &&
         cleanUserMessage.length <= 200 &&
-        cleanUserMessage.length >= 3
+        cleanUserMessage.length >= 2
     ) {
         alreadyExistChats.add(messageIdentifier);
         // If the set gets too large, clear the oldest entry
@@ -583,7 +584,7 @@ app.post('/new-chat', (req, res) => {
         socket.emit('joinRoom', { roomId, username: "" });
     });
 
-    socket.on('newMessage', async (data: { username: string; message: string, userAddress: string }) => {
+    socket.on('newMessage', (data: { username: string; message: string, userAddress: string }) => {
         if (!data.username || !data.message || !data.userAddress) return;
         let finalUsername = (data.username === data.userAddress) ? data.username.slice(0, 6) : data.username;
         const chatEntry = { username: finalUsername, message: data.message };
@@ -619,7 +620,7 @@ app.post('/new-chat', (req, res) => {
  * Accepts a POST request with a username and message to test the
  * chat processing functionality directly.
  */
-app.post('/test-chat', async (req, res) => {
+app.post('/test-chat', (req, res) => {
     const { username, message } = req.body;
 
     // Validate that both username and message are provided
@@ -826,6 +827,6 @@ const PORT = Number(process.env.PORT) || 8000;
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Admin panel available at http://YOUR_DOMAIN_OR_IP:${PORT}/admin/login`);
-    console.log(`Character available at http://YOUR_DOMAIN_OR_IP:${PORT}/`);
+    console.log(`Admin panel available at http://lbxachilles.fun/admin/login`);
+    console.log(`Character available at http://lbxachilles.fun/`);
 });
