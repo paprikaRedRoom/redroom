@@ -822,9 +822,10 @@ app.post('/admin/set-mint-id', requireAuth, (req, res) => {
 app.use('/', express.static(path.join(__dirname, '../public')));
 
 // --- SERVER START ---
-const PORT = process.env.PORT || 8000;
-server.listen(PORT, () => {
+const PORT = Number(process.env.PORT) || 8000;
+
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Admin panel available at http://localhost:${PORT}/admin/login`);
-    console.log(`Character available at http://localhost:${PORT}/`);
+    console.log(`Admin panel available at http://YOUR_DOMAIN_OR_IP:${PORT}/admin/login`);
+    console.log(`Character available at http://YOUR_DOMAIN_OR_IP:${PORT}/`);
 });
