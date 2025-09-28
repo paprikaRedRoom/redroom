@@ -827,6 +827,6 @@ const PORT = Number(process.env.PORT) || 8000;
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Admin panel available at http://lbxachilles.fun/admin/login`);
-    console.log(`Character available at http://lbxachilles.fun/`);
+    console.log(`Admin panel available at http://lbxachilles.fun:8000/admin/login`);
+    console.log(`Character available at http://lbxachilles.fun:8000/`);
 });
