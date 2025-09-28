@@ -554,7 +554,7 @@ app.post('/new-chat', (req, res) => {
     console.log('[INFO] Chat history has been cleared for the new session.');
 
     // --- NEW: Start the pump.fun WebSocket connection for the new mintID ---
-    connectToPumpFun(mintID);
+    // connectToPumpFun(mintID);
     // --------------------------------------------------------------------
 
     const roomId = mintID;
