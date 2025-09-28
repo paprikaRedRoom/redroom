@@ -438,6 +438,7 @@ async function processChat(username: string, userMessage: string, history: { use
 
             if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
                 const rawResponseText = data.candidates[0].content.parts[0].text;
+                console.log(`AI Response: ${rawResponseText}`);
                 try {
                     aiRes = JSON.parse(rawResponseText);
                 } catch (error:any) {
@@ -472,7 +473,8 @@ async function processChat(username: string, userMessage: string, history: { use
             
             // Combine the emotion tag with the content in the text field
             const textWithEmotion = emotionTag ? `${emotionTag} ${aiRes.content}` : aiRes.content;
-        
+            console.log(`Text for TTS: ${textWithEmotion}`);
+
             const audioStream = await elevenlabs.textToSpeech.convert('bMxLr8fP6hzNRRi9nJxU', {
                 text: textWithEmotion,  // Include emotion tags directly in the text
                 modelId: 'eleven_v3',
