@@ -356,7 +356,7 @@
                   if (window.currentAudio && !window.currentAudio.paused) return;
                   const introAudio = './audio/intro.mp3';
                   const introText = "Hi, welcome in! I’m Wasp, and I am so happy you are here. Let’s have a fun time together and make today feel bright.";
-                  try { await window.talker(introText, introAudio, 'sad'); } 
+                  try { await window.talker(introText, introAudio, 'happy'); } 
                   catch (error) { console.error("Intro sequence failed:", error); }
               }
           }
