@@ -236,7 +236,7 @@
 
     <div class="content-container">
         <div class="card-section">
-            <h2 class="section-title">Lapis</h2>
+            <h2 class="section-title">Hana</h2>
             <div id="character-view"></div>
         </div>
         <div class="card-section">
@@ -327,7 +327,7 @@
                   lastTimePlayed = Date.now();
                   if (window.currentAudio && !window.currentAudio.paused) return;
                   const introAudio = './audio/intro.mp3';
-                  const introText = "You are here, stay if you want, but do not expect a smile. I am tired, and something feels wrong, as always.";
+                  const introText = "Hi hi welcome in I am so happy you are here let us have a fun time together and make today feel bright";
                   try { await window.talker(introText, introAudio, 'sad'); } 
                   catch (error) { console.error("Intro sequence failed:", error); }
               }
@@ -400,7 +400,7 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm';
 
-        let posConfigJson = '{"position":[0.008,1.4412,0.7197],"target":[-0.004,1.3537,-0.0336]}';
+        let posConfigJson = '{"position":[-0.0153,1.4197,-0.6783],"target":[0.0146,1.348,0.038]}';
         // let posConfigJson = null; // <-- UNCOMMENT THIS LINE FOR FREE-MOVE MODE
 
         const scene = new THREE.Scene();
@@ -464,8 +464,8 @@
             scene.add(currentVrm.scene);
             try {
                 const quat = new THREE.Quaternion(), euler = new THREE.Euler();
-                euler.set(0, 0, 1.05); const rightArmRot = quat.setFromEuler(euler).toArray();
-                euler.set(0, 0, -1.05); const leftArmRot = quat.setFromEuler(euler).toArray();
+                euler.set(0, 0, -1.05); const rightArmRot = quat.setFromEuler(euler).toArray();
+                euler.set(0, 0, 1.05); const leftArmRot = quat.setFromEuler(euler).toArray();
                 currentVrm.humanoid.setNormalizedPose({
                     [VRMHumanBoneName.RightUpperArm]: { rotation: rightArmRot },
                     [VRMHumanBoneName.LeftUpperArm]: { rotation: leftArmRot },
