@@ -226,6 +226,35 @@
             to { transform: translateX(0); opacity: 1; }
         }
     </style>
+    <script>
+        // Function to generate and apply a new random color theme
+        function generateRandomTheme() {
+            // Generate a random hue value between 0 and 360
+            const randomHue = Math.floor(Math.random() * 361);
+
+            // Define saturation and lightness for a consistent theme
+            const saturation = 90;
+            const lightness = 70;
+
+            // Generate harmonious HSL color strings
+            const primaryColor = `hsl(${randomHue}, ${saturation}%, ${lightness}%)`;
+            const secondaryColor = `hsl(${(randomHue + 90) % 360}, ${saturation}%, ${lightness}%)`; // 90 degrees apart for a pleasing contrast
+            const backgroundColor = `hsl(${randomHue}, 30%, 20%)`; // Dark and less saturated
+            const textColor = `hsl(${randomHue}, 20%, 95%)`; // Very light and desaturated
+
+            // Get the root element
+            const root = document.documentElement;
+
+            // Apply the new colors to the CSS variables
+            root.style.setProperty('--primary-color', primaryColor);
+            root.style.setProperty('--secondary-color', secondaryColor);
+            root.style.setProperty('--background-color', backgroundColor);
+            root.style.setProperty('--text-color', textColor);
+        }
+
+        // Generate a new theme when the page loads
+        document.addEventListener('DOMContentLoaded', generateRandomTheme);
+    </script>
 </head>
 <body>
     <!-- Decorative elements -->
@@ -236,7 +265,7 @@
 
     <div class="content-container">
         <div class="card-section">
-            <h2 class="section-title">Hana</h2>
+            <h2 class="section-title">Wasp</h2>
             <div id="character-view"></div>
         </div>
         <div class="card-section">
@@ -259,7 +288,6 @@
             "Thanks for being here!", 
             "Let's have some fun!", 
             "You are awesome!",
-
             "UwU you make my day brighter~",
             "Hehe hiiii cutie >w<",
             "Nyaa~ you’re so sweet!",
@@ -327,7 +355,7 @@
                   lastTimePlayed = Date.now();
                   if (window.currentAudio && !window.currentAudio.paused) return;
                   const introAudio = './audio/intro.mp3';
-                  const introText = "Hi hi welcome in I am so happy you are here let us have a fun time together and make today feel bright";
+                  const introText = "Hi, welcome in! I’m Wasp, and I am so happy you are here. Let’s have a fun time together and make today feel bright.";
                   try { await window.talker(introText, introAudio, 'sad'); } 
                   catch (error) { console.error("Intro sequence failed:", error); }
               }
@@ -400,8 +428,7 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm';
 
-        let posConfigJson = '{"position":[-0.0153,1.4197,-0.6783],"target":[0.0146,1.348,0.038]}';
-        // let posConfigJson = null; // <-- UNCOMMENT THIS LINE FOR FREE-MOVE MODE
+        let posConfigJson = '{"position":[-0.0167,1.4889,-0.7051],"target":[0.0013,1.4135,0.0494]}';
 
         const scene = new THREE.Scene();
         const characterView = document.getElementById('character-view');

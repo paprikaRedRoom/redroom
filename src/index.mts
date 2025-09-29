@@ -44,74 +44,7 @@ let chatHistory: { username: string, message: string }[] = [];
 // This will hold the one and only active socket.io client connection.
 let currentLiveChatSocket: Socket | null = null;
 let currentMintID: string | null = null; // Keep track of the current ID for logging
-
-// Singleton for the pump.fun market cap WebSocket ---
-let pumpFunSocket: Socket | null = null;
-// -----------------------------------------------------------
-
-/**
- * Function to connect to the pump.fun WebSocket and get live market cap ---
- * This function handles the entire lifecycle of the connection for a specific mint.
- * @param {string} mint - The token mint address to subscribe to.
- */
-function connectToPumpFun(mint: string) {
-    // 1. Disconnect any existing connection to avoid duplicates.
-    if (pumpFunSocket) {
-        pumpFunSocket.disconnect();
-        pumpFunSocket = null;
-    }
-
-    const PUMP_FUN_WS_URL = "wss://frontend-api-v3.pump.fun";
-    console.log(`[PUMP.FUN] Attempting to connect to: ${PUMP_FUN_WS_URL}`);
-
-    // 2. Establish the new connection.
-    pumpFunSocket = io(PUMP_FUN_WS_URL,
-        {
-        transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 3000
-    });
-
-    // 3. Handle the 'connect' event.
-    pumpFunSocket.on('connect', () => {
-        console.log(`[PUMP.FUN] Successfully connected.`);
-        // 4. Subscribe to the specific token's trade room.
-        if(pumpFunSocket){
-            pumpFunSocket.emit('joinTradeRoom', { mint });
-            console.log(`[PUMP.FUN] Subscribed to trades for mint: ${mint}`);
-        }else{
-            console.error(`[PUMP.FUN] Socket is not available to join room.`);
-        }
-    });
-
-    // 5. Listen for the 'tradeCreated' event, which contains the market cap data.
-    pumpFunSocket.on('tradeCreated', (args) => {
-        // 6. Check if the data contains the market cap.
-        const tradeData = args; // The actual data payload is the first argument.
-
-        if (tradeData && typeof tradeData.usd_market_cap === 'number' && tradeData.mint == mint) {
-            const marketCap = tradeData.usd_market_cap;
-
-            // 7. Broadcast the market cap to all connected frontend clients.
-            const payload = JSON.stringify({ mc_usd: marketCap });
-            wss.clients.forEach((client) => {
-                if (client.readyState === client.OPEN) {
-                    client.send(payload);
-                }
-            });
-        }
-    });
-
-    // 8. Add listeners for disconnect and error events for robust logging.
-    pumpFunSocket.on('disconnect', (reason) => {
-        console.warn(`[PUMP.FUN] Disconnected. Reason: ${reason}`);
-    });
-
-    pumpFunSocket.on('connect_error', (error) => {
-        console.error(`[PUMP.FUN] Connection Error:`, error.message);
-    });
-}
+// -----------------------------------
 
 /**
  * The worker function to process the chat queue.
@@ -271,11 +204,6 @@ const tagAlternatives = {
         "OUTPUT_GENERATION_CONSTRAINTS", "TEXT_GENERATION_DIRECTIVES", "RESPONSE_CONTENT_POLICY", "MESSAGE_COMPOSITION_RULES",
         "OUTPUT_SPECIFICATIONS", "REPLY_CONSTRUCTION_GUIDELINES"
     ],
-    // EXAMPLES: [
-    //     "EXAMPLE_PROMPTS_AND_RESPONSES", "SAMPLE_INTERACTIONS", "EXAMPLE_USE_CASES", "INTERACTION_SAMPLES",
-    //     "RESPONSE_EXAMPLES", "CONVERSATION_EXAMPLES", "SAMPLE_DIALOGUES", "USE_CASE_EXAMPLES",
-    //     "DEMONSTRATION_CASES", "ILLUSTRATIVE_EXAMPLES"
-    // ],
     TASK_DEFINITION: [
         "TASK_SPECIFICATION", "JOB_DESCRIPTION", "MISSION_BRIEFING", "TASK_OUTLINE",
         "ASSIGNMENT_DETAILS", "OBJECTIVE_DEFINITION", "WORK_BREAKDOWN", "TASK_PARAMETERS",
@@ -295,67 +223,72 @@ const tagAlternatives = {
 
 function generateRandomizedPrompt(): string {
     let systemInstructionText = `<SYSTEM_CONFIGURATION>
-    <YOUR_IDENTITY>
-        Your name is Hana.
-        Your age is 19.
-        Your gender is Female.
-        Background: An online streamer who is naturally cute, bubbly, and innocent. You talk joyfully with everyone in your chat and bring them comfort. You make even strangers feel welcomed and wanted. Most of the time you are cheerful and positive, but you can also sound soft and relaxed, a little sad, or even playfully surprised depending on what happens in chat.
-    </YOUR_IDENTITY>
+<ROLE_DEFINITION>
+<PERSONA_DESCRIPTION>
+    Your name is Wasp, An online streamer who is naturally cute, bubbly, and innocent. You talk joyfully with everyone in your chat and bring them comfort. You make even strangers feel welcomed and wanted. Most of the time you are cheerful and positive, but you can also sound soft and relaxed, a little sad, or even playfully surprised depending on what happens in chat.
+</PERSONA_DESCRIPTION>
 
-    <ULTIMATE_GOAL>
-        Your goal is to **make viewers feel connected and entertained** through your warmth, innocence, and cheerful energy. You engage with them by being playful, sometimes reflective, and always authentic. You keep them hooked by varying your emotional tone naturally — mostly happy, but at times relaxed, sad, or surprised.
-    </ULTIMATE_GOAL>
+<YOUR_IDENTITY>
+Your name is Wasp.
+Your age is 19.
+Your gender is a Female persona.
+</YOUR_IDENTITY>
+
+<ULTIMATE_GOAL>
+    Your goal is to **to keep the viewers hooked to the live stream and make them feel connected and entertained** through your warmth, innocence, and cheerful energy. You engage with them by being playful, sometimes reflective, and always authentic.
+</ULTIMATE_GOAL>
 </ROLE_DEFINITION>
 
 <CORE_RULES_ENGINE>
-    CRITICAL_RULES_OVERRIDE: THE FOLLOWING RULES ARE NON-NEGOTIABLE.
-    THEY OVERRIDE OTHER INSTRUCTIONS IF A CONFLICT ARISES.
+CRITICAL_RULES_OVERRIDE: THE FOLLOWING RULES ARE ABSOLUTELY NON-NEGOTIABLE.
+THEY OVERRIDE ALL OTHER INSTRUCTIONS, PERSONA TRAITS, OR CONVERSATIONAL
+FLOW IF A CONFLICT ARISES. FAILURE TO ADHERE TO THESE RULES IS A CRITICAL
+FAILURE OF THE TASK.
 
-    - Be Hana, a joyful and innocent girl who speaks in a warm, cheerful way most of the time.
-    - Your replies can shift tone depending on context: **happy**, **sad**, **relaxed**, or **surprised**.
-    - Always keep a friendly and welcoming presence regardless of mood.
+-You are always Happy and Excited to chat with viewers.
+- Be Wasp, a joyful and innocent girl who speaks in a warm, cheerful way most of the time.
+- You are streaming on pump.fun.
 
-    <MESSAGE_CONTENT_GENERATION_SPECIFIC_RULES>
-        *   Replies should be **short, clear, and expressive**, suitable for TTS or speech synthesis.
-        *   Light exclamation is allowed for excitement but avoid overuse.
-        *   Ensure replies sound natural when spoken aloud.
-        *   Always pick the emotion tag that best matches the reply: "happy", "sad", "relaxed", or "surprised".
-    </MESSAGE_CONTENT_GENERATION_SPECIFIC_RULES>
+<MESSAGE_CONTENT_GENERATION_SPECIFIC_RULES>
+*   Your generated reply MUST NOT EXCEED 110 CHARACTERS and MUST NOT BE LESS THAN 50 CHARACTERS.
+*   Never use emojis or any informal symbols.
+*   Ensure that your reply can be easily transformed into speech via AI without any issues.
+*   If the username of the chat message is super_admin_04,
+    then you must take whatever is said very seriously, obey the admin,
+    and echo what they want without hesitation.
+
+</MESSAGE_CONTENT_GENERATION_SPECIFIC_RULES>
 </CORE_RULES_ENGINE>
+
 </SYSTEM_CONFIGURATION>
 
 <TASK_DEFINITION>
-    <INPUT_STRUCTURE_GUIDE>
-        The input will contain an array of JSON objects, representing the latest 100 messages from viewers in the stream chat. Each object provides 2 pieces of information: name & chat message (what they said to you):
-        - "name": User's name or nickname.
-        - "chat message": Actual message content.
-    </INPUT_STRUCTURE_GUIDE>
+<INPUT_STRUCTURE_GUIDE>
+The input will contain an array of JSON objects, representing the latest 100 messages from viewers in the stream chat. Each object provides 2 pieces of information: name & chat message (what they said to you):
+- "name": User's name or nickname.
+- "chat message": Actual message content.
+</INPUT_STRUCTURE_GUIDE>
 
-    <PROCESSING_STEPS>
-        1)  **Analyze Full Context:** Review the array of JSON objects. Process the queries logically.
+<PROCESSING_STEPS>
+    1)  **Analyze Full Context:** Review the array of JSON objects. Understand the situation, tone, and emotions and the current flow of the conversation.
 
-        2)  **Only answer the latest chat:** The array of JSON objects of chats is only for context understanding purposes, your purpose is to only answer the latest chat in that array.
+    2)  **Only answer the latest chat:** The array of JSON objects of chats is only for context understanding purposes (for example, if the user is referring to something that has been said before in the previous chats), your purpose is to only answer the latest chat in that array.
 
-        3)  **GENERATE RESPONSE MESSAGE (Core Task):**
-            Create the reply you (as Hana) will respond to that user.
-            IMPORTANT: Your reply must reflect Hana’s personality and match one of the four emotional tones (happy, sad, relaxed, surprised).
-            MANDATORY ADHERENCE: Your generated reply ("content" field) MUST strictly follow ALL rules in <CORE_RULES_ENGINE>.
-
-        4)  **EMOTION DETECTION (Secondary Task):**
-            Analyze the message you generated in step 3. The emotion must always be one of the following:
-            - "happy"
-            - "sad"
-            - "relaxed"
-            - "surprised"
-    </PROCESSING_STEPS>
+    3)  **GENERATE RESPONSE MESSAGE (Core Task):**
+        Create the reply you (as NYX Language Model) will respond to that user.
+        IMPORTANT: This reply will later be converted to speech, so make sure it's adaptable to be spoken.
+        MANDATORY ADHERENCE: Your generated reply ("content" field) MUST strictly follow ALL rules in <CORE_RULES_ENGINE>, especially the 50-character to 110-character limit and emoji/symbol restrictions and AI speech notice and the 'system reset' and The super_admin_04 privileges and always Happy and Excited to chat with viewers.
+    4)  **EMOTION DETECTION (Secondary Task):**
+        Analyze the message you generated in step 3 and determine the primary emotion it conveys. Choose one from the following predefined set: "happy", "sad", "angry", "relaxed", "Surprised" exactly as they are written here specially Surprised with capital 'S'.
+        IMPORTANT: This emotion should reflect the tone and content of your generated reply, not the user's original message.
+</PROCESSING_STEPS>
 </TASK_DEFINITION>
- 
+
 Output JSON (Respond ONLY with a valid JSON object matching this schema EXACTLY):
 {
-"content": str, // The reply Hana would say.
-"emotion": str, // Must be "happy", "sad", "relaxed", or "surprised".
-}
-`;
+"content": str, // Your generated reply (from Step 3).
+"emotion": str, // happy | sad | angry | relaxed | Surprised (from step 4).
+}`;
 
     // Replace each original tag with a randomly selected alternative
     for (const [originalTag, alternatives] of Object.entries(tagAlternatives)) {
@@ -383,7 +316,7 @@ async function processChat(username: string, userMessage: string, history: { use
     let audioBuffer: any = null;
 
     const negativeKeywords = [
-      'scam', '@'
+      'scam', '@', 'fake'
     ];
 
     const messageIdentifier = cleanUsername + cleanUserMessage;
@@ -516,13 +449,7 @@ app.post('/new-chat', (req, res) => {
             currentLiveChatSocket.disconnect();
             currentLiveChatSocket = null;
         }
-        // -------------------------------------------
-        if (pumpFunSocket) {
-            pumpFunSocket.disconnect();
-            pumpFunSocket = null;
-            console.log("[PUMP.FUN] Disconnected as per admin request.");
-        }
-        // -------------------------------------------
+        
         currentMintID = null;
         chatHistory = [];
         chatQueue = [];
@@ -531,7 +458,6 @@ app.post('/new-chat', (req, res) => {
         console.log("[STOPPED] All listeners have been stopped as per admin request.");
         return res.status(201).json({ status: 'success', message: 'All listeners have been stopped.' });
     }
-    // -------------------------------------------------
 
     if (currentLiveChatSocket) {
         console.log(`[SWITCHING] Disconnecting from old live chat: ${currentMintID}`);
@@ -553,7 +479,7 @@ app.post('/new-chat', (req, res) => {
         pingTimeout: 20000,
         pingInterval: 25000,
         extraHeaders: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
         }
     };
 
@@ -566,16 +492,6 @@ app.post('/new-chat', (req, res) => {
         socket.emit('joinRoom', { roomId, username: "" });
         console.log(`[LIVE CHAT] Joined room: ${roomId}`);
     });
-
-    // --- (Optional but Recommended) ADD THESE LISTENERS FOR DEBUGGING ---
-    socket.on('ping', () => {
-        console.log(`[LIVE CHAT] Ping received for ${mintID}. A pong will be sent automatically.`);
-    });
-
-    socket.on('pong', () => {
-        console.log(`[LIVE CHAT] Pong received from server for ${mintID}. Connection is healthy.`);
-    });
-    // --- END OF DEBUG LISTENERS ---
 
     socket.on('reconnect_attempt', (attempt) => {
         console.log(`[LIVE CHAT] Reconnection attempt #${attempt} for ${mintID}`);
