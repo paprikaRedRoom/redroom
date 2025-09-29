@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Overlay</title>
+    <!-- FONT IMPORTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 
+        ==========================================================================
+        AI MODIFICATION HUB & THEME
+        ==========================================================================
+        */
+        :root {
+            --primary-color: #a29bfe; /* Soft Lavender */
+            --secondary-color: #fd79a8; /* Pastel Pink */
+            --background-color: #2c2c54; /* Dark Purple */
+            --text-color: #dfe6e9; /* Light Grey */
+            --title-font: 'Pacifico', cursive;
+            --body-font: 'Poppins', sans-serif;
+        }
+
+        /* 
+        ==========================================================================
+        GENERAL PAGE SETUP
+        ==========================================================================
+        */
+        /* FIXED: Universal box-sizing for predictable layout */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 1366px;
+            height: 768px;
+            font-family: var(--body-font);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Hide scrollbars */
+        body::-webkit-scrollbar { display: none; }
+        body { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 
+        ==========================================================================
+        BACKGROUND & DECORATIVE ELEMENTS
+        ==========================================================================
+        */
+        .background-animation {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1; overflow: hidden;
+        }
+        .circle {
+            position: absolute; bottom: -150px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%; animation: float 25s infinite ease-in-out;
+            opacity: 0.2;
+        }
+        .circle:nth-child(1) { width: 200px; height: 200px; left: 10%; animation-duration: 28s; }
+        .circle:nth-child(2) { width: 300px; height: 300px; left: 40%; animation-duration: 32s; animation-delay: 5s; }
+        .circle:nth-child(3) { width: 150px; height: 150px; left: 70%; animation-duration: 24s; animation-delay: 2s; }
+
+        .fairy-orb-container {
+            position: absolute; bottom: 0; left: 0;
+            width: 100px; height: 100px;
+            pointer-events: none;
+            animation: fairy-float 20s infinite ease-in-out;
+        }
+        .fairy-orb {
+            width: 40px; height: 40px;
+            background: radial-gradient(circle, #ffffff, var(--secondary-color));
+            border-radius: 50%; box-shadow: 0 0 15px var(--secondary-color), 0 0 25px #ffffff;
+            opacity: 0.7;
+        }
+        .sparkle {
+            position: absolute; width: 4px; height: 4px; background: #fff;
+            border-radius: 50%; top: 50%; left: 50%;
+            animation: sparkle-trail 1.5s infinite linear; opacity: 0;
+        }
+        .sparkle:nth-child(2) { animation-delay: 0.2s; }
+        .sparkle:nth-child(3) { animation-delay: 0.4s; }
+        .sparkle:nth-child(4) { animation-delay: 0.6s; }
+        .sparkle:nth-child(5) { animation-delay: 0.8s; }
+
+        /* 
+        ==========================================================================
+        MAIN CONTENT & LAYOUT
+        ==========================================================================
+        */
+        .main-title {
+            font-family: var(--title-font);
+            font-size: 2.8rem; 
+            text-align: center; margin: 10px 0; /* Reduced margin slightly */
+            color: var(--text-color);
+            animation: neon-glow 5s infinite ease-in-out alternate;
+            transition: opacity 0.5s ease;
+        }
+
+        .content-container {
+            display: flex; justify-content: center;
+            align-items: flex-start; gap: 40px;
+            padding: 10px 20px; 
+            height: calc(100% - 110px); /* Adjusted for new title margin */
+        }
+        
+        .card-section {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--primary-color);
+            border-radius: 20px; padding: 20px;
+            box-shadow: 0 0 20px rgba(162, 155, 254, 0.3);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            flex-basis: 48%; height: 100%;
+            display: flex; flex-direction: column;
+        }
+
+        .section-title {
+            font-family: var(--body-font); font-weight: 600;
+            font-size: 2.2rem; 
+            margin-top: 0; /* Remove top margin */
+            margin-bottom: 15px;
+            text-align: center; color: var(--secondary-color);
+            flex-shrink: 0; /* Prevent title from shrinking */
+        }
+
+        /* 
+        ==========================================================================
+        CHARACTER & CHAT SPECIFIC STYLES
+        ==========================================================================
+        */
+
+        /* FIXED: Applied flex-grow to make this element fill available space */
+        #character-view {
+            width: 100%;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            flex-grow: 1; /* This makes the container expand */
+            min-height: 0; /* Prevents flexbox overflow bugs */
+        }
+        #character-view canvas { display: block; }
+
+        #chat-container {
+            flex-grow: 1; /* This was correct */
+            overflow: hidden;
+            position: relative;
+            min-height: 0; /* Prevents flexbox overflow bugs */
+        }
+        #chat-messages {
+            position: absolute; bottom: 0;
+            width: 100%; display: flex;
+            flex-direction: column; padding: 0 10px;
+        }
+        .chat-message {
+            padding: 10px 15px; margin-bottom: 10px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-left: 4px solid var(--secondary-color);
+            border-radius: 15px; animation: slideIn 0.5s ease-out;
+            word-wrap: break-word; font-size: 1.3rem;
+        }
+        .username {
+            font-weight: 600; color: var(--secondary-color);
+            margin-right: 8px;
+        }
+        #turn-on-button {
+            width: 240px; height: 50px;
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+            margin: 0 auto 20px auto; border: none;
+            box-shadow: 0 0 15px rgba(253, 121, 168, 0.5);
+            color: #fff; font-size: 22px;
+            font-family: var(--body-font); font-weight: bold;
+            text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; border-radius: 15px; transition: all 0.3s ease;
+        }
+        #turn-on-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 25px rgba(253, 121, 168, 0.8);
+        }
+        
+        #snapshot-position-button {
+            position: absolute; bottom: 10px; left: 50%;
+            transform: translateX(-50%); z-index: 100;
+            padding: 8px 16px; background-color: var(--primary-color);
+            color: #fff; border: none; font-family: var(--body-font);
+            font-weight: bold; text-transform: uppercase;
+            cursor: pointer; border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: background-color 0.2s ease;
+        }
+        #snapshot-position-button:hover { background-color: var(--secondary-color); }
+
+        /* 
+        ==========================================================================
+        ANIMATION KEYFRAMES (Unchanged)
+        ==========================================================================
+        */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+        @keyframes neon-glow {
+            from { text-shadow: 0 0 4px var(--secondary-color); }
+            to { text-shadow: 0 0 7px var(--secondary-color); }
+        }
+        @keyframes fairy-float {
+            0% { transform: translate(5vw, -5vh) rotate(0deg); }
+            25% { transform: translate(30vw, -20vh) rotate(20deg); }
+            50% { transform: translate(50vw, -10vh) rotate(0deg); }
+            75% { transform: translate(80vw, -25vh) rotate(-20deg); }
+            100% { transform: translate(95vw, -5vh) rotate(0deg); }
+        }
+        @keyframes sparkle-trail {
+            from { transform: translate(0, 0) scale(1); opacity: 1; }
+            to { transform: translate(-40px, 0) scale(0); opacity: 0; }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+    <script>
+        // Function to generate and apply a new random color theme
+        function generateRandomTheme() {
+            // Generate a random hue value between 0 and 360
+            const randomHue = Math.floor(Math.random() * 361);
+
+            // Define saturation and lightness for a consistent theme
+            const saturation = 90;
+            const lightness = 70;
+
+            // Generate harmonious HSL color strings
+            const primaryColor = `hsl(${randomHue}, ${saturation}%, ${lightness}%)`;
+            const secondaryColor = `hsl(${(randomHue + 90) % 360}, ${saturation}%, ${lightness}%)`; // 90 degrees apart for a pleasing contrast
+            const backgroundColor = `hsl(${randomHue}, 30%, 20%)`; // Dark and less saturated
+            const textColor = `hsl(${randomHue}, 20%, 95%)`; // Very light and desaturated
+
+            // Get the root element
+            const root = document.documentElement;
+
+            // Apply the new colors to the CSS variables
+            root.style.setProperty('--primary-color', primaryColor);
+            root.style.setProperty('--secondary-color', secondaryColor);
+            root.style.setProperty('--background-color', backgroundColor);
+            root.style.setProperty('--text-color', textColor);
+        }
+
+        // Generate a new theme when the page loads
+        document.addEventListener('DOMContentLoaded', generateRandomTheme);
+    </script>
+</head>
+<body>
+    <!-- Decorative elements -->
+    <div class="fairy-orb-container"><div class="fairy-orb"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div></div>
+    <div class="background-animation"><div class="circle"></div><div class="circle"></div><div class="circle"></div></div>
+    
+    <h1 class="main-title" id="main-title">Welcome to the stream!</h1>
+
+    <div class="content-container">
+        <div class="card-section">
+            <h2 class="section-title">Wasp</h2>
+            <div id="character-view"></div>
+        </div>
+        <div class="card-section">
+            <h2 class="section-title">Live Chat</h2>
+            <button id="turn-on-button">Start</button>
+            <div id="chat-container">
+                <div id="chat-messages"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- This entire <script> block for page logic (websockets, title changes) is unchanged -->
+    <script>
+      const currentActiveEmotion = 'neutral';
+      document.addEventListener('DOMContentLoaded', (event) => {
+          const quotes = [
+            "Stay hydrated!", 
+            "Don't forget to smile :)", 
+            "Sending virtual hugs!", 
+            "Thanks for being here!", 
+            "Let's have some fun!", 
+            "You are awesome!",
+            "UwU you make my day brighter~",
+            "Hehe hiiii cutie >w<",
+            "Nyaa~ you’re so sweet!",
+            "Keep shining like a star ✨",
+            "Ara ara~ you’re still here? ehehe",
+            "I see youuuu lurking, cutie~",
+            "Don’t be shy, say hi!",
+            "Your smile is contagious >///<",
+            "No bulli plsss >w<",
+            "Omg omg you’re too cuteee!!",
+            "Drink water or I’ll bonk u!",
+            "Pat pat for you~",
+            "Giggles intensify hehe~",
+            "You’re part of my comfy space 💖",
+            "O-oh… you’re watching me? >///<",
+            "Ehehe you’re my favorite human rn~",
+            "Kyaa~ so many cuties here!!",
+            "UwU squad strong today!!",
+            "Smile check! :3",
+            "You’re safe here with me~",
+            "My chat is best chat uwu",
+            "Y-you’re making me blush…",
+            "Hearts for everyoneeee 💕",
+            "Who needs coffee? we got uwu energy!",
+            "Fluffy vibes only ✨",
+            "I hope u ate something yummy~",
+            "Comfy blanket mode activated!",
+            "Boop! *boops ur nose*",
+            "You're my sunshine today 🌸",
+            "More headpats incoming uwu",
+            "Don't stress, just vibeee~",
+            "Did I just see a cutie in chat?!",
+            "This stream is powered by uwu!",
+            "You’re loved more than you know 💖",
+            "Can we just… cuddle the vibes? owo",
+            "No sad beans allowed here!",
+            "UwU overload warning >///<",
+            "Giggle squad unite hehe~",
+            "You're glowing today, I swear~",
+            "Snuggly snuggly stream vibes~",
+            "Pwease take care of yourself!",
+            "Cutie detected in chat!!",
+            "UwU energy >>> all other energy"
+            ];
+          const titleElement = document.getElementById('main-title');
+          let quoteIndex = 0;
+          setInterval(() => {
+              quoteIndex = (quoteIndex + 1) % quotes.length;
+              titleElement.style.opacity = 0;
+              setTimeout(() => { titleElement.textContent = quotes[quoteIndex]; titleElement.style.opacity = 1; }, 500);
+          }, 7000);
+          const buttonTurnOn = document.getElementById('turn-on-button');
+          let buttonClicked = false, lastTimePlayed = Date.now();
+          buttonTurnOn.onclick = () => { buttonClicked = true; buttonTurnOn.style.display = 'none'; };
+          const chatMessages = document.getElementById('chat-messages');
+          function addMessage(username, userMessage) {
+              const messageElement = document.createElement('div');
+              messageElement.className = 'chat-message';
+              messageElement.innerHTML = `<span class="username">${username}:</span> ${userMessage}`;
+              chatMessages.appendChild(messageElement);
+              if (chatMessages.children.length > 7) { chatMessages.removeChild(chatMessages.children[0]); }
+          }
+          async function showIntro(){
+              if(lastTimePlayed + 30000 < Date.now() && buttonClicked){ 
+                  lastTimePlayed = Date.now();
+                  if (window.currentAudio && !window.currentAudio.paused) return;
+                  const introAudio = './audio/intro.mp3';
+                  const introText = "Hi, welcome in! I’m Wasp, and I am so happy you are here. Let’s have a fun time together and make today feel bright.";
+                  try { await window.talker(introText, introAudio, 'happy'); } 
+                  catch (error) { console.error("Intro sequence failed:", error); }
+              }
+          }
+          setInterval(showIntro, 1000);
+          const messageQueue = [];
+          let isProcessing = false;
+          async function processQueue() {
+              if (messageQueue.length === 0) { isProcessing = false; return; }
+              isProcessing = true;
+              const receivedData = messageQueue.shift();
+              if(receivedData.username !== "super_admin_04"){ addMessage(receivedData.username, receivedData.userMessage); }
+              if(receivedData.audio && receivedData.message && receivedData.emotion && buttonClicked) {
+                  lastTimePlayed = Date.now();
+                  try { await window.talker(receivedData.message, `data:audio/mp3;base64,${receivedData.audio}`, receivedData.emotion); } 
+                  catch (error) { console.error("Message sequence failed:", error); }
+              }
+              processQueue();
+          }
+          class RobustWebSocketClient {
+              constructor() { this.ws = null; this.url = "ws://localhost:8000"; this.reconnectDelay = 2000; }
+              connect() {
+                  if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+                  this.ws = new WebSocket(this.url);
+                  this.ws.onopen = () => console.log("[WebSocket] Connection established.");
+                  this.ws.onmessage = (event) => { messageQueue.push(JSON.parse(event.data)); if (!isProcessing) processQueue(); };
+                  this.ws.onclose = () => { setTimeout(() => this.connect(), this.reconnectDelay); };
+                  this.ws.onerror = (err) => { console.error("[WebSocket] Error:", err); this.ws.close(); };
+              }
+          }
+          new RobustWebSocketClient().connect();
+
+          // dummy chats for test
+            // setInterval(() => {
+            //     const dummyUsers = ["Alice", "Bob", "Charlie", "Diana", "Eve"];
+            //     const dummyMessages = [
+            //         "Hello everyone!", "How's it going?", "This is so cool!", 
+            //         "I love this avatar!", "You're doing great!", "Keep it up!", 
+            //         "This stream is awesome!", "So much fun here!", "Can't wait for more!",
+            //         "You look amazing today!", "Sending positive vibes!", "This made my day!",
+            //         "Haha that's hilarious!", "Wow, impressive skills!", "You're the best!",
+            //         "Such a comfy vibe here~", "UwU you're so cute~", "Nyaa~ love this stream!",
+            //         "Ehehe you're making me blush >///<", "Omg you're too adorable!!",
+            //         "Stay hydrated, cutie~", "More headpats please! >w<", "You’re my sunshine today 🌸"
+            //     ];
+            //     if (buttonClicked) {
+            //         const randomUser = dummyUsers[Math.floor(Math.random() * dummyUsers.length)];
+            //         const randomMessage = dummyMessages[Math.floor(Math.random() * dummyMessages.length)];
+            //         addMessage(randomUser, randomMessage);
+            //     }
+            // }, 5000);
+      });
+    </script>
+    
+    <!-- This <script type="importmap"> block is unchanged -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./js/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/",
+                "@pixiv/three-vrm": "./js/three-vrm.module.js"
+            }
+        }
+    </script>
+
+    <!-- This <script type="module"> block for THREE.js is unchanged, as the fix was in CSS -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm';
+
+        let posConfigJson = '{"position":[-0.0167,1.4889,-0.7051],"target":[0.0013,1.4135,0.0494]}';
+
+        const scene = new THREE.Scene();
+        const characterView = document.getElementById('character-view');
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(characterView.clientWidth, characterView.clientHeight); 
+        renderer.setPixelRatio(window.devicePixelRatio);
+        characterView.appendChild(renderer.domElement);
+
+        const camera = new THREE.PerspectiveCamera(30.0, characterView.clientWidth / characterView.clientHeight, 0.1, 20.0);
+        let controls;
+
+        if (posConfigJson === null) {
+            console.log("posConfigJson is null. Initializing free camera controls.");
+            camera.position.set(0.0, 1.4, 2.0);
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 1.2, 0);
+            controls.enableDamping = true;
+            const snapshotButton = document.createElement('button');
+            snapshotButton.id = 'snapshot-position-button';
+            snapshotButton.textContent = 'Snapshot Position';
+            characterView.appendChild(snapshotButton);
+            snapshotButton.onclick = () => {
+                const positionData = {
+                    position: [ parseFloat(camera.position.x.toFixed(4)), parseFloat(camera.position.y.toFixed(4)), parseFloat(camera.position.z.toFixed(4)) ],
+                    target: [ parseFloat(controls.target.x.toFixed(4)), parseFloat(controls.target.y.toFixed(4)), parseFloat(controls.target.z.toFixed(4)) ]
+                };
+                const jsonOutput = JSON.stringify(positionData);
+                console.log("--- CAMERA POSITION JSON ---", jsonOutput);
+                navigator.clipboard.writeText(jsonOutput)
+                    .then(() => alert('Position JSON copied to clipboard!'))
+                    .catch(() => alert('Could not copy. See console.'));
+            };
+        } else {
+            console.log("posConfigJson is set. Locking camera position.");
+            try {
+                const config = JSON.parse(posConfigJson);
+                camera.position.set(...config.position);
+                camera.lookAt(...config.target);
+            } catch (e) {
+                console.error("Failed to parse posConfigJson.", e);
+                camera.position.set(0, 1.35, 1.3);
+                camera.lookAt(0, 1.2, 0);
+            }
+        }
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        directionalLight.position.set(1.0, 1.0, 1.0).normalize();
+        scene.add(directionalLight);
+        
+        const clock = new THREE.Clock();
+        let currentVrm, isTalking = false, lastTalkTime = 0, activeEmotion = currentActiveEmotion;
+        let emotionFadeInterval, nextBlinkTime = 0, isBlinking = false;
+        let currentVowel = 'aa';
+        const vowels = ['aa', 'ih', 'ou', 'ee', 'oh'];
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser));
+        loader.load('./avatar.vrm', (gltf) => {
+            currentVrm = gltf.userData.vrm;
+            scene.add(currentVrm.scene);
+            try {
+                const quat = new THREE.Quaternion(), euler = new THREE.Euler();
+                euler.set(0, 0, -1.05); const rightArmRot = quat.setFromEuler(euler).toArray();
+                euler.set(0, 0, 1.05); const leftArmRot = quat.setFromEuler(euler).toArray();
+                currentVrm.humanoid.setNormalizedPose({
+                    [VRMHumanBoneName.RightUpperArm]: { rotation: rightArmRot },
+                    [VRMHumanBoneName.LeftUpperArm]: { rotation: leftArmRot },
+                });
+            } catch (e) { console.error("Failed to apply A-Pose:", e); }
+            currentVrm.humanoid.autoUpdate = false;
+            currentVrm.lookAt.target = camera;
+            setNextBlinkTime();
+        });
+        window.talker = function(text, audioSrc, emotion = currentActiveEmotion) {
+            return new Promise((resolve, reject) => {
+                if (!currentVrm) { resolve(); return; }
+                clearInterval(emotionFadeInterval);
+                const expressionManager = currentVrm.expressionManager;
+                if (activeEmotion !== emotion) {
+                    expressionManager.setValue(activeEmotion, 0);
+                    expressionManager.setValue(emotion, 1.0);
+                    activeEmotion = emotion;
+                }
+                if (window.currentAudio) { window.currentAudio.pause(); }
+                window.currentAudio = new Audio(audioSrc);
+                window.currentAudio.onplay = () => isTalking = true;
+                window.currentAudio.onerror = (err) => { isTalking = false; reject(err); };
+                window.currentAudio.onended = () => {
+                    isTalking = false; 
+                    if (!currentVrm) { resolve(); return; }
+                    const emotionToFade = activeEmotion;
+                    activeEmotion = currentActiveEmotion;
+                    let currentValue = 1.0;
+                    emotionFadeInterval = setInterval(() => {
+                        currentValue = Math.max(0, currentValue - 0.05);
+                        expressionManager.setValue(emotionToFade, currentValue);
+                        if (currentValue === 0) { clearInterval(emotionFadeInterval); resolve(); }
+                    }, 50);
+                };
+                window.currentAudio.play().catch(reject);
+            });
+        }
+        function setNextBlinkTime() { nextBlinkTime = clock.getElapsedTime() + 2.0 + Math.random() * 4.0; }
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta(), elapsedTime = clock.getElapsedTime();
+            if (controls) { controls.update(); }
+            if (currentVrm) {
+                const expressionManager = currentVrm.expressionManager;
+                if (!isBlinking && elapsedTime > nextBlinkTime) {
+                    isBlinking = true;
+                    expressionManager.setValue('blink', 1.0);
+                    setTimeout(() => { expressionManager.setValue('blink', 0.0); isBlinking = false; setNextBlinkTime(); }, 150);
+                }
+                if (isTalking && elapsedTime - lastTalkTime > 0.1) { 
+                    expressionManager.setValue(currentVowel, 0.0);
+                    currentVowel = vowels[Math.floor(Math.random() * vowels.length)];
+                    expressionManager.setValue(currentVowel, 0.5 + Math.random() * 0.5);
+                    lastTalkTime = elapsedTime;
+                } else if (!isTalking && expressionManager.getValue(currentVowel) > 0) {
+                    expressionManager.setValue(currentVowel, 0.0);
+                }
+                currentVrm.update(delta);
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // This listener now correctly resizes the canvas inside the new flexible container
+        window.addEventListener('resize', () => {
+            // Check if the container has a valid size before resizing
+            if (characterView.clientWidth > 0 && characterView.clientHeight > 0) {
+                camera.aspect = characterView.clientWidth / characterView.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(characterView.clientWidth, characterView.clientHeight);
+            }
+        });
+        // Also trigger a resize event after a short delay to ensure initial size is correct
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+    </script>
+</body>
+</html>
