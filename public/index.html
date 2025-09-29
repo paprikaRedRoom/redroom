@@ -236,7 +236,7 @@
 
     <div class="content-container">
         <div class="card-section">
-            <h2 class="section-title">Avatar</h2>
+            <h2 class="section-title">Lapis</h2>
             <div id="character-view"></div>
         </div>
         <div class="card-section">
@@ -250,8 +250,60 @@
     
     <!-- This entire <script> block for page logic (websockets, title changes) is unchanged -->
     <script>
+      const currentActiveEmotion = 'neutral';
       document.addEventListener('DOMContentLoaded', (event) => {
-          const quotes = ["Stay hydrated!", "Don't forget to smile :)", "Sending virtual hugs!", "Thanks for being here!", "Let's have some fun!", "You are awesome!"];
+          const quotes = [
+            "Stay hydrated!", 
+            "Don't forget to smile :)", 
+            "Sending virtual hugs!", 
+            "Thanks for being here!", 
+            "Let's have some fun!", 
+            "You are awesome!",
+
+            "UwU you make my day brighter~",
+            "Hehe hiiii cutie >w<",
+            "Nyaa~ you’re so sweet!",
+            "Keep shining like a star ✨",
+            "Ara ara~ you’re still here? ehehe",
+            "I see youuuu lurking, cutie~",
+            "Don’t be shy, say hi!",
+            "Your smile is contagious >///<",
+            "No bulli plsss >w<",
+            "Omg omg you’re too cuteee!!",
+            "Drink water or I’ll bonk u!",
+            "Pat pat for you~",
+            "Giggles intensify hehe~",
+            "You’re part of my comfy space 💖",
+            "O-oh… you’re watching me? >///<",
+            "Ehehe you’re my favorite human rn~",
+            "Kyaa~ so many cuties here!!",
+            "UwU squad strong today!!",
+            "Smile check! :3",
+            "You’re safe here with me~",
+            "My chat is best chat uwu",
+            "Y-you’re making me blush…",
+            "Hearts for everyoneeee 💕",
+            "Who needs coffee? we got uwu energy!",
+            "Fluffy vibes only ✨",
+            "I hope u ate something yummy~",
+            "Comfy blanket mode activated!",
+            "Boop! *boops ur nose*",
+            "You're my sunshine today 🌸",
+            "More headpats incoming uwu",
+            "Don't stress, just vibeee~",
+            "Did I just see a cutie in chat?!",
+            "This stream is powered by uwu!",
+            "You’re loved more than you know 💖",
+            "Can we just… cuddle the vibes? owo",
+            "No sad beans allowed here!",
+            "UwU overload warning >///<",
+            "Giggle squad unite hehe~",
+            "You're glowing today, I swear~",
+            "Snuggly snuggly stream vibes~",
+            "Pwease take care of yourself!",
+            "Cutie detected in chat!!",
+            "UwU energy >>> all other energy"
+            ];
           const titleElement = document.getElementById('main-title');
           let quoteIndex = 0;
           setInterval(() => {
@@ -275,8 +327,8 @@
                   lastTimePlayed = Date.now();
                   if (window.currentAudio && !window.currentAudio.paused) return;
                   const introAudio = './audio/intro.mp3';
-                  const introText = "Hi everyone, and welcome! I'm so happy you could join me today!";
-                  try { await window.talker(introText, introAudio, 'happy'); } 
+                  const introText = "You are here, stay if you want, but do not expect a smile. I am tired, and something feels wrong, as always.";
+                  try { await window.talker(introText, introAudio, 'sad'); } 
                   catch (error) { console.error("Intro sequence failed:", error); }
               }
           }
@@ -307,6 +359,26 @@
               }
           }
           new RobustWebSocketClient().connect();
+
+          // dummy chats for test
+            // setInterval(() => {
+            //     const dummyUsers = ["Alice", "Bob", "Charlie", "Diana", "Eve"];
+            //     const dummyMessages = [
+            //         "Hello everyone!", "How's it going?", "This is so cool!", 
+            //         "I love this avatar!", "You're doing great!", "Keep it up!", 
+            //         "This stream is awesome!", "So much fun here!", "Can't wait for more!",
+            //         "You look amazing today!", "Sending positive vibes!", "This made my day!",
+            //         "Haha that's hilarious!", "Wow, impressive skills!", "You're the best!",
+            //         "Such a comfy vibe here~", "UwU you're so cute~", "Nyaa~ love this stream!",
+            //         "Ehehe you're making me blush >///<", "Omg you're too adorable!!",
+            //         "Stay hydrated, cutie~", "More headpats please! >w<", "You’re my sunshine today 🌸"
+            //     ];
+            //     if (buttonClicked) {
+            //         const randomUser = dummyUsers[Math.floor(Math.random() * dummyUsers.length)];
+            //         const randomMessage = dummyMessages[Math.floor(Math.random() * dummyMessages.length)];
+            //         addMessage(randomUser, randomMessage);
+            //     }
+            // }, 5000);
       });
     </script>
     
@@ -328,7 +400,7 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm';
 
-        let posConfigJson = null;
+        let posConfigJson = '{"position":[0.008,1.4412,0.7197],"target":[-0.004,1.3537,-0.0336]}';
         // let posConfigJson = null; // <-- UNCOMMENT THIS LINE FOR FREE-MOVE MODE
 
         const scene = new THREE.Scene();
@@ -381,7 +453,7 @@
         scene.add(directionalLight);
         
         const clock = new THREE.Clock();
-        let currentVrm, isTalking = false, lastTalkTime = 0, activeEmotion = 'neutral';
+        let currentVrm, isTalking = false, lastTalkTime = 0, activeEmotion = currentActiveEmotion;
         let emotionFadeInterval, nextBlinkTime = 0, isBlinking = false;
         let currentVowel = 'aa';
         const vowels = ['aa', 'ih', 'ou', 'ee', 'oh'];
@@ -392,8 +464,8 @@
             scene.add(currentVrm.scene);
             try {
                 const quat = new THREE.Quaternion(), euler = new THREE.Euler();
-                euler.set(0, 0, -1.05); const rightArmRot = quat.setFromEuler(euler).toArray();
-                euler.set(0, 0, 1.05); const leftArmRot = quat.setFromEuler(euler).toArray();
+                euler.set(0, 0, 1.05); const rightArmRot = quat.setFromEuler(euler).toArray();
+                euler.set(0, 0, -1.05); const leftArmRot = quat.setFromEuler(euler).toArray();
                 currentVrm.humanoid.setNormalizedPose({
                     [VRMHumanBoneName.RightUpperArm]: { rotation: rightArmRot },
                     [VRMHumanBoneName.LeftUpperArm]: { rotation: leftArmRot },
@@ -403,7 +475,7 @@
             currentVrm.lookAt.target = camera;
             setNextBlinkTime();
         });
-        window.talker = function(text, audioSrc, emotion = 'neutral') {
+        window.talker = function(text, audioSrc, emotion = currentActiveEmotion) {
             return new Promise((resolve, reject) => {
                 if (!currentVrm) { resolve(); return; }
                 clearInterval(emotionFadeInterval);
@@ -421,7 +493,7 @@
                     isTalking = false; 
                     if (!currentVrm) { resolve(); return; }
                     const emotionToFade = activeEmotion;
-                    activeEmotion = 'neutral';
+                    activeEmotion = currentActiveEmotion;
                     let currentValue = 1.0;
                     emotionFadeInterval = setInterval(() => {
                         currentValue = Math.max(0, currentValue - 0.05);
