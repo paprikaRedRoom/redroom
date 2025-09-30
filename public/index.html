@@ -4,228 +4,242 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stream Overlay</title>
-    <!-- FONT IMPORTS - Added a comic-style font -->
+    <!-- FONT IMPORTS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Kalam:wght@700&display=swap" rel="stylesheet">
     
     <style>
         /* 
         ==========================================================================
-        AI MODIFICATION HUB & THEME
+        DESIGN - Girly Stream Room
         ==========================================================================
         */
         :root {
-            --primary-color: #3498db;   /* Bright Sky Blue */
-            --secondary-color: #f1c40f; /* Bold Sunny Yellow */
-            --background-color: #ffffff; /* Dark Slate Blue */
-            --text-color: #ecf0f1;     /* Clean Off-White */
+            --primary-color: #ff85a2;   /* Soft Pink */
+            --secondary-color: #a2d2ff; /* Pastel Blue */
+            --background-color: #fce4ec; /* Light Pink Background */
+            --text-color: #333;         /* Dark Grey Text */
+            --accent-color: #ffffff;    /* White */
             
-            /* Comic-style fonts */
-            --title-font: 'Bangers', cursive;
+            --title-font: 'Kalam', cursive;
             --body-font: 'Poppins', sans-serif;
         }
 
         *, *::before, *::after {
             box-sizing: border-box;
-        }
-
-        html, body {
-            width: 1366px;
-            height: 768px;
-            font-family: var(--body-font);
-            background-color: var(--background-color);
-            color: var(--text-color);
-            overflow: hidden;
             margin: 0;
             padding: 0;
         }
 
-        body::-webkit-scrollbar { display: none; }
-        body { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* 
-        ==========================================================================
-        BACKGROUND & DECORATIVE ELEMENTS (Unchanged)
-        ==========================================================================
-        */
-        .background-animation {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: -1; overflow: hidden;
-        }
-        .circle {
-            position: absolute; bottom: -150px;
-            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-            border-radius: 50%; animation: float 25s infinite ease-in-out;
-            opacity: 0.2;
-        }
-        .circle:nth-child(1) { width: 200px; height: 200px; left: 10%; animation-duration: 28s; }
-        .circle:nth-child(2) { width: 300px; height: 300px; left: 40%; animation-duration: 32s; animation-delay: 5s; }
-        .circle:nth-child(3) { width: 150px; height: 150px; left: 70%; animation-duration: 24s; animation-delay: 2s; }
-        .fairy-orb-container {
-            position: absolute; bottom: 0; left: 0;
-            width: 100px; height: 100px; pointer-events: none;
-            animation: fairy-float 20s infinite ease-in-out;
-        }
-        .fairy-orb {
-            width: 40px; height: 40px; background: radial-gradient(circle, #ffffff, var(--secondary-color));
-            border-radius: 50%; box-shadow: 0 0 15px var(--secondary-color), 0 0 25px #ffffff;
-            opacity: 0.7;
-        }
-        .sparkle {
-            position: absolute; width: 4px; height: 4px; background: #fff;
-            border-radius: 50%; top: 50%; left: 50%;
-            animation: sparkle-trail 1.5s infinite linear; opacity: 0;
-        }
-        .sparkle:nth-child(2) { animation-delay: 0.2s; } .sparkle:nth-child(3) { animation-delay: 0.4s; }
-        .sparkle:nth-child(4) { animation-delay: 0.6s; } .sparkle:nth-child(5) { animation-delay: 0.8s; }
-
-        /* 
-        ==========================================================================
-        MAIN CONTENT & LAYOUT
-        ==========================================================================
-        */
-        .main-title {
-            font-family: var(--title-font);
-            font-size: 4.5rem; /* Larger for the new font */
-            letter-spacing: 2px;
-            text-align: center; margin: 10px 0;
+        html, body {
+            width: 1366px; /* For OBS */
+            height: 768px; /* For OBS */
+            font-family: var(--body-font);
+            background-color: var(--background-color);
+            background-image: url('https://www.publicdomainpictures.net/pictures/310000/velka/abstract-background-156811269522v.jpg'); /* Girly room background */
+            background-size: cover;
+            background-position: center;
             color: var(--text-color);
-            -webkit-text-stroke: 2px black; /* Comic-style outline */
-            animation: neon-glow 5s infinite ease-in-out alternate;
-            transition: opacity 0.5s ease;
+            overflow: hidden;
+            position: relative;
         }
 
-        .content-container {
-            display: flex; justify-content: center;
-            align-items: flex-start; gap: 40px;
-            padding: 10px 20px; 
-            height: calc(100% - 110px);
+        /* 
+        ==========================================================================
+        TOKEN INFO STYLING (NEW)
+        ==========================================================================
+        */
+        .token-info {
+            position: absolute;
+            top: 20px;
+            left: 47%;
+            transform: translateX(-50%);
+            z-index: 5;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 3px solid var(--primary-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .token-name {
+            font-family: var(--title-font);
+            font-size: 3.5rem; /* Larger font for the name */
+            color: var(--primary-color);
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.1);
+            line-height: 1;
+            margin: 0;
+        }
+
+        .token-ca {
+            font-family: var(--body-font);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            background-color: rgba(0,0,0,0.05);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: inline-block; /* To contain background */
+            word-break: break-all; /* Ensure long CAs don't overflow */
         }
         
-        .card-section {
-            background: rgba(0, 0, 0, 0.3);
-            border: 4px solid #000; /* Bolder comic border */
-            border-radius: 20px; padding: 20px;
-            box-shadow: 0 0 20px rgba(162, 155, 254, 0.3);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            flex-basis: 48%; height: 100%;
-            display: flex; flex-direction: column;
+        /* 
+        ==========================================================================
+        MAIN CHARACTER STYLING
+        ==========================================================================
+        */
+        .character-container {
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Vertically centers content */
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
-        .section-title {
-            font-family: var(--title-font); font-weight: 600;
-            font-size: 3rem; /* Larger title */
-            letter-spacing: 1px;
-            -webkit-text-stroke: 1.5px black;
-            margin-top: 0; margin-bottom: 15px;
-            text-align: center; color: var(--secondary-color);
+        #girl-character {
+            max-width: 85%;
+            max-height: 85%;
+            object-fit: contain;
+            filter: drop-shadow(0px 5px 15px rgba(0,0,0,0.2));
+            margin-top: 60px; /* Pushes character down slightly to avoid text */
+            border-radius: 25px;
+            margin-right: 100px;
+        }
+        
+        /* 
+        ==========================================================================
+        LIVE CHAT STYLING
+        ==========================================================================
+        */
+        .chat-window {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 450px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid var(--primary-color);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .chat-header {
+            font-family: var(--title-font);
+            font-size: 1.8rem;
+            text-align: center;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: var(--accent-color);
             flex-shrink: 0;
         }
-
-        /* 
-        ==========================================================================
-        CHARACTER & CHAT SPECIFIC STYLES
-        ==========================================================================
-        */
-
-        /* UPDATED: Styles for the 2D character image */
-        #character-view {
-            width: 100%;
-            border-radius: 15px;
-            overflow: hidden;
-            flex-grow: 1;
-            min-height: 0;
-            display: flex; /* Center the image */
-            justify-content: center;
-            align-items: center;
-        }
-
-        #cat-character {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain; /* Ensures the image scales correctly */
-        }
-
-        #chat-container {
-            flex-grow: 1; overflow: hidden;
-            position: relative; min-height: 0;
-        }
-        #chat-messages {
-            position: absolute; bottom: 0; width: 100%;
-            display: flex; flex-direction: column; padding: 0 10px;
-        }
-        .chat-message {
-            padding: 10px 15px; margin-bottom: 10px;
-            background-color: rgba(0, 0, 0, 0.2);
-            border-left: 4px solid var(--secondary-color);
-            border-radius: 15px; animation: slideIn 0.5s ease-out;
-            word-wrap: break-word; font-size: 1.3rem;
-        }
-        .username {
-            font-weight: 600; color: var(--secondary-color);
-            margin-right: 8px;
-        }
+        
         #turn-on-button {
-            width: 240px; height: 50px;
-            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
-            margin: 0 auto 20px auto; border: none;
-            box-shadow: 0 0 15px rgba(253, 121, 168, 0.5);
-            color: #fff; font-size: 22px;
-            font-family: var(--body-font); font-weight: bold;
-            text-transform: uppercase; letter-spacing: 2px;
-            cursor: pointer; border-radius: 15px; transition: all 0.3s ease;
+            width: 80%;
+            height: 45px;
+            margin: 20px auto;
+            background: var(--primary-color);
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            color: var(--accent-color);
+            font-size: 18px;
+            font-family: var(--body-font);
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
         }
+
         #turn-on-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 25px rgba(253, 121, 168, 0.8);
+            transform: translateY(-2px);
+            background-color: #ff6b8f;
         }
         
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
-        @keyframes neon-glow { from { text-shadow: 0 0 4px var(--secondary-color); } to { text-shadow: 0 0 7px var(--secondary-color); } }
-        @keyframes fairy-float { 0% { transform: translate(5vw, -5vh) rotate(0deg); } 25% { transform: translate(30vw, -20vh) rotate(20deg); } 50% { transform: translate(50vw, -10vh) rotate(0deg); } 75% { transform: translate(80vw, -25vh) rotate(-20deg); } 100% { transform: translate(95vw, -5vh) rotate(0deg); } }
-        @keyframes sparkle-trail { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(-40px, 0) scale(0); opacity: 0; } }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        #chat-container {
+            scrollbar-width: none; /* For Firefox */
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: hidden;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+
+        #chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-message {
+            padding: 8px 12px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            animation: slideIn 0.4s ease-out;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .username {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-right: 5px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
-    <!-- Decorative elements -->
-    <div class="fairy-orb-container"><div class="fairy-orb"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div></div>
-    <div class="background-animation"><div class="circle"></div><div class="circle"></div><div class="circle"></div></div>
     
-    <h1 class="main-title" id="main-title">Kitty Cat Stream!</h1>
+    <!-- Token Name and CA -->
+    <div class="token-info">
+        <h1 class="token-name">$Rem</h1>
+        <p class="token-ca">CA: xxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
+    </div>
 
-    <div class="content-container">
-        <div class="card-section">
-            <!-- UPDATED: Section title for the cat -->
-            <h2 class="section-title">[ Silas ]</h2>
-            <!-- UPDATED: Div now contains an <img> tag for the cat -->
-            <div id="character-view">
-                <img id="cat-character" src="./cat_close.png" alt="A cute cat character">
-            </div>
-        </div>
-        <div class="card-section">
-            <h2 class="section-title">Live Chat</h2>
-            <button id="turn-on-button">Start</button>
-            <div id="chat-container">
-                <div id="chat-messages"></div>
-            </div>
+    <!-- Main character -->
+    <div class="character-container">
+        <img id="girl-character" src="./still.png" alt="A friendly girl character">
+    </div>
+
+    <!-- Live chat window -->
+    <div class="chat-window">
+        <h2 class="chat-header">Live Chat</h2>
+        <button id="turn-on-button">Start Chat</button>
+        <div id="chat-container">
+            <div id="chat-messages"></div>
         </div>
     </div>
     
-    <!-- This script handles page logic like title changes, websockets, and now, the 2D character -->
+    <!-- This script handles page logic. IT REMAINS UNTOUCHED. -->
     <script>
       document.addEventListener('DOMContentLoaded', (event) => {
           // --- DYNAMIC TITLE CHANGER (Unchanged) ---
           const quotes = ["Stay hydrated!", "Don't forget to smile :)", "Sending virtual hugs!", "Thanks for being here!", "Let's have some fun!", "You are awesome!"];
-          const titleElement = document.getElementById('main-title');
-          let quoteIndex = 0;
-          setInterval(() => {
-              quoteIndex = (quoteIndex + 1) % quotes.length;
-              titleElement.style.opacity = 0;
-              setTimeout(() => { titleElement.textContent = quotes[quoteIndex]; titleElement.style.opacity = 1; }, 500);
-          }, 7000);
+          const titleElement = document.getElementById('main-title'); // This element is no longer in the HTML, this will gracefully fail.
+          if (titleElement) {
+            let quoteIndex = 0;
+            setInterval(() => {
+                quoteIndex = (quoteIndex + 1) % quotes.length;
+                titleElement.style.opacity = 0;
+                setTimeout(() => { titleElement.textContent = quotes[quoteIndex]; titleElement.style.opacity = 1; }, 500);
+            }, 7000);
+          }
           
           // --- CORE PAGE LOGIC (Mostly Unchanged) ---
           const buttonTurnOn = document.getElementById('turn-on-button');
@@ -237,8 +251,11 @@
               const messageElement = document.createElement('div');
               messageElement.className = 'chat-message';
               messageElement.innerHTML = `<span class="username">${username}:</span> ${userMessage}`;
-              chatMessages.appendChild(messageElement);
-              if (chatMessages.children.length > 7) { chatMessages.removeChild(chatMessages.children[0]); }
+              // Prepend to show new messages at the top of the container (which is visually the bottom)
+              chatMessages.insertBefore(messageElement, chatMessages.firstChild); 
+              if (chatMessages.children.length > 7) { 
+                  chatMessages.removeChild(chatMessages.lastChild); 
+              }
           }
           
           async function showIntro(){
@@ -246,7 +263,8 @@
                   lastTimePlayed = Date.now();
                   if (window.currentAudio && !window.currentAudio.paused) return;
                   const introAudio = './audio/intro.mp3';
-                  const introText = "meow meow, meow meow meow meow meow... meow meow meow meow meow meow meow meow meow meow meow meow meow";
+                  // Changed text to fit a girl character
+                  const introText = "Hey everyone! So glad you could make it to the stream today. Let's have some fun together!";
                   try { await window.talker(introText, introAudio, 'happy'); } 
                   catch (error) { console.error("Intro sequence failed:", error); }
               }
@@ -280,39 +298,47 @@
               }
           }
           new RobustWebSocketClient().connect();
+
+          // test chat
+        //   setInterval(() => {
+        //       if(buttonClicked){
+        //           const testUsers = ["Alice", "Bob", "Charlie", "Diana", "Eve"];
+        //           const randomUser = testUsers[Math.floor(Math.random() * testUsers.length)];
+        //           const randomMessage = "This is a test message!";
+        //           addMessage(randomUser, randomMessage);
+        //       }
+        //   }, 1000);
       });
 
       /**
-       * ========================================================================
-       * REWRITTEN: 2D Character Talker Function
-       * This function now controls the <img> tag for the cat.
-       * ========================================================================
+       * MODIFIED: Character Talker Function
+       * This function now controls the <img> tag for the girl character.
        */
       window.talker = function(text, audioSrc) {
           return new Promise((resolve, reject) => {
-              const catImage = document.getElementById('cat-character');
-              if (!catImage) {
-                  console.error("Cat image element not found!");
-                  reject("Cat image missing.");
+              const girlImage = document.getElementById('girl-character'); // Changed ID
+              if (!girlImage) {
+                  console.error("Girl image element not found!");
+                  reject("Girl image missing.");
                   return;
               }
 
               // Change to the talking GIF immediately
-              catImage.src = './meow.gif';
+              girlImage.src = './move.gif';
 
               if (window.currentAudio) { window.currentAudio.pause(); }
               window.currentAudio = new Audio(audioSrc);
 
               // Event handler for when the audio finishes playing
               window.currentAudio.onended = () => {
-                  catImage.src = './cat_close.png'; // Change back to the cat_close image
+                  girlImage.src = './still.png'; // Change back to the still image
                   resolve(); // Signal that the sequence is complete
               };
               
               // Event handler for any audio playback errors
               window.currentAudio.onerror = (err) => {
                   console.error("Audio playback error:", err);
-                  catImage.src = './cat_close.png'; // Change back even if there's an error
+                  girlImage.src = './still.png'; // Change back even if there's an error
                   reject("Failed to play audio.");
               };
 
@@ -321,8 +347,6 @@
           });
       }
     </script>
-    
-    <!-- ALL 3D-RELATED SCRIPT BLOCKS HAVE BEEN REMOVED -->
 
 </body>
 </html>
