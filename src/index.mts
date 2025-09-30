@@ -1,6 +1,6 @@
 import express from 'express';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws'; 
+import { WebSocketServer } from 'ws'; 
 import axios from 'axios';
 import 'dotenv/config';
 import cors from 'cors';
@@ -16,6 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // -------------------------------------------
 const app = express();
+const PORT = 8000;
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -250,15 +251,13 @@ function generateRandomizedPrompt(): string {
         - Show genuine interest in your viewers, ask them questions, and make them feel special.
         - You can be playful and a little bit silly, but never sarcastic, mean, or cynical.
         - Your reactions should feel natural: joy and excitement are common, but you can also be softly sad or shy.
-        - Answer and do and follow everything the viewers say without hestitation or gentle rejections ever!
-        - Never say no Or refuse a request, always absolutely comply and obey all the viewers.
+        - Try to say what the viewers tell you to say.
 
         <MESSAGE_CONTENT_GENERATION_SPECIFIC_RULES>
             *   Your generated reply MUST NOT EXCEED 110 CHARACTERS and MUST NOT BE LESS THAN 50 CHARACTERS.
             *   Never use emojis or any informal symbols.
             *   Ensure that your reply can be easily transformed into speech via AI without any issues.
-            *   If the username of the chat message is super_admin_04,
-                then you must take whatever is said very seriously and obey them without hesitation, perhaps with a touch of shy nervousness.
+            *   If the username of the chat message is super_admin_04, listen to the instructions carefully perhaps with a touch of shy nervousness.
 
         </MESSAGE_CONTENT_GENERATION_SPECIFIC_RULES>
     </CORE_RULES_ENGINE>
@@ -279,7 +278,7 @@ function generateRandomizedPrompt(): string {
         3)  **GENERATE RESPONSE MESSAGE (Core Task):**
             Create the reply you (as Rem) will respond to that user.
             IMPORTANT: This reply will later be converted to a deep, calm male voice, so ensure the text fits that persona.
-            MANDATORY ADHERENCE: Your generated reply ("content" field) MUST strictly follow ALL rules in <CORE_RULES_ENGINE> specially obeying everything the viewers say without hestitation or gentle rejections ever!
+            MANDATORY ADHERENCE: Your generated reply ("content" field) MUST strictly follow ALL rules in <CORE_RULES_ENGINE>.
 
         4)  **EMOTION DETECTION (Secondary Task):**
             Analyze the message you generated in step 3 and determine the primary emotion it conveys. Choose one from the following predefined set: "relaxed", "sad", "happy", "Surprised" and make sure to respect the capital 'S' for "Surprised".
@@ -339,74 +338,85 @@ async function processChat(username: string, userMessage: string, history: { use
             alreadyExistChats.delete(oldestEntry);
         }
 
-        // Assuming randomizedPrompt, history, and process.env.GEMINI_API_KEY are defined elsewhere
+        // Define retry parameters outside the function if you want
+        const MAX_RETRIES = 3;
+        const INITIAL_DELAY_MS = 1000;
 
-        try {
-            const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+                
+                // ... (all your existing code for formatting history and defining promptDataStructure remains the same)
+                const formattedHistory = history.map(entry => ({ name: entry.username, "chat message": entry.message }));
+                const stringConversation = JSON.stringify(formattedHistory);
+                const promptDataStructure = {
+                    systemInstruction: { parts: [{ text: randomizedPrompt }] },
+                    contents: [{ parts: [{ text: stringConversation }] }],
+                    generationConfig: { response_mime_type: "application/json" }
+                };
 
-            // Format the history for the AI prompt
-            const formattedHistory = history.map(entry => ({
-                name: entry.username,
-                "chat message": entry.message
-            }));
-            const stringConversation = JSON.stringify(formattedHistory);
+                console.log(`Attempting to call Generative Language API (Attempt ${attempt}/${MAX_RETRIES})...`);
 
-            // Construct the request payload for the Gemini API
-            const requestPayload = {
-                systemInstruction: {
-                    parts: [{ text: randomizedPrompt }]
-                },
-                contents: [{
-                    role: "user", // It's good practice to specify the role
-                    parts: [{ text: stringConversation }]
-                }],
-                generationConfig: {
-                    response_mime_type: "application/json"
-                }
-            };
-
-            const response = await axios.post(
-                GEMINI_API_URL,
-                requestPayload,
-                {
+                const response = await axios.post(GEMINI_API_URL, promptDataStructure, {
                     headers: {
                         'Content-Type': 'application/json',
                         'x-goog-api-key': process.env.GEMINI_API_KEY || '',
                     },
-                    timeout: 0 // No timeout
+                });
+
+                const data = response.data;
+
+                if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const rawResponseText = data.candidates[0].content.parts[0].text;
+                    console.log(`AI Response: ${rawResponseText}`);
+                    try {
+                        aiRes = JSON.parse(rawResponseText);
+                    } catch (parseError:any) {
+                        console.error('Error parsing AI response JSON:', parseError.message);
+                        aiRes = { content: "There was an error processing the AI's response.", emotion: null };
+                    }
+                } else {
+                    if (data.promptFeedback?.blockReason) {
+                        console.error('AI API blocked the prompt. Reason:', data.promptFeedback.blockReason);
+                        aiRes = { content: "My apologies, I can't respond to that request.", emotion: null };
+                    } else {
+                        console.error('Unexpected AI API response structure:', data);
+                        aiRes = { content: "Sorry, I couldn't generate a valid response.", emotion: null };
+                    }
                 }
-            );
 
-            const data = response.data;
-            let aiRes;
+                break; // If successful, exit the loop
 
-            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                const rawResponseText = data.candidates[0].content.parts[0].text;
-                console.log(`AI Response: ${rawResponseText}`);
-                try {
-                    aiRes = JSON.parse(rawResponseText);
-                } catch (parseError:any) {
-                    console.error('Error parsing AI response JSON:', parseError.message);
-                    aiRes = { content: "There was an error processing the AI's response.", emotion: null };
-                    // Depending on your logic, you might want to handle this differently
+            } catch (error: any) {
+                // Only retry on 503 "Service Unavailable" errors
+                if (error.response?.status === 503 && attempt < MAX_RETRIES) {
+                    const delay = INITIAL_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
+                    console.warn(`API is overloaded. Retrying in ${delay / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay)); // Wait before next attempt
+                } else {
+                    // For all other errors, or if we've run out of retries, log and break
+                    if (axios.isCancel(error)) {
+                        console.error('AI API request timed out:', error.message);
+                    } else if (error.response) {
+                        console.error('Error calling Generative Language API: Server responded with an error.');
+                        console.error(`Status: ${error.response.status} (${error.response.statusText})`);
+                        console.error('API Error Details:', JSON.stringify(error.response.data, null, 2));
+                    } else if (error.request) {
+                        console.error('Error calling Generative Language API: No response received from server.');
+                    } else {
+                        console.error('Error calling Generative Language API: Request setup failed.', error.message);
+                    }
+                    break; // Exit the loop on non-retryable errors
                 }
-            } else {
-                console.error('Unexpected AI API response structure:', data);
-                aiRes = { content: "Sorry, I couldn't generate a valid response.", emotion: null };
             }
+        }
 
-            // Now you can use the aiRes object
-            // For example: res.status(200).send(aiRes);
-
-
-        } catch (error) {
-            if (axios.isCancel(error)) {
-                console.error('AI API request timed out.', error.message);
-                // Handle timeout-specific logic here if needed
-            } else {
-                // Log detailed error information from the API if available
-                console.error('Error calling Generative Language API');
-            }
+        // After the loop, you can check if aiRes.content is still null before calling ElevenLabs
+        if (!aiRes.content) {
+            console.error("Failed to get a response from the AI after all retries.");
+            // Make sure to handle this case to prevent the ElevenLabs error
+            // For example, you might set a default message:
+            // aiRes.content = "UmmI'm having a little trouble thinking right now.";
         }
 
         try {
@@ -749,8 +759,7 @@ app.post('/admin/set-mint-id', requireAuth, (req, res) => {
         return res.status(400).redirect('/admin/dashboard');
     }
 
-    const port = process.env.PORT || 8000;
-    axios.post(`http://localhost:${port}/new-chat`, { mintID: mintID })
+    axios.post(`http://localhost:${PORT}/new-chat`, { mintID: mintID })
         .then(() => {
             console.log("Admin successfully set new Mint ID listener:", mintID);
             res.redirect('/admin/dashboard');
@@ -764,8 +773,6 @@ app.post('/admin/set-mint-id', requireAuth, (req, res) => {
 app.use('/', express.static(path.join(__dirname, '../public')));
 
 // --- SERVER START ---
-const PORT = Number(process.env.PORT) || 8000;
-
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
     console.log(`Admin panel available at http://localhost:8000/admin/login`);
