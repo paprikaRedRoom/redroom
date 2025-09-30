@@ -338,55 +338,75 @@ async function processChat(username: string, userMessage: string, history: { use
             const oldestEntry = alreadyExistChats.values().next().value;
             alreadyExistChats.delete(oldestEntry);
         }
-        const FORWARDER_BASE_URL = getSelectedForwarderUrl();
-        if (!FORWARDER_BASE_URL) {
-            console.error('No valid forwarder URL found.');
-            return;
-        }
+
+        // Assuming randomizedPrompt, history, and process.env.GEMINI_API_KEY are defined elsewhere
 
         try {
-            const AI_API_URL = `${FORWARDER_BASE_URL}/ai-api`;
+            const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-            // --- NEW: Format the history for the AI prompt ---
+            // Format the history for the AI prompt
             const formattedHistory = history.map(entry => ({
                 name: entry.username,
                 "chat message": entry.message
             }));
             const stringConversation = JSON.stringify(formattedHistory);
-            // --------------------------------------------------
 
-            const promptDataStructure = {
-                systemInstruction: { parts: [{ text: randomizedPrompt }] },
-                contents: [{ parts: [{ text: stringConversation }] }],
-                generationConfig: { response_mime_type: "application/json" }
+            // Construct the request payload for the Gemini API
+            const requestPayload = {
+                systemInstruction: {
+                    parts: [{ text: randomizedPrompt }]
+                },
+                contents: [{
+                    role: "user", // It's good practice to specify the role
+                    parts: [{ text: stringConversation }]
+                }],
+                generationConfig: {
+                    response_mime_type: "application/json"
+                }
             };
 
-            const response = await axios.post(AI_API_URL, promptDataStructure, { headers: { 'Content-Type': 'application/json', timeout: 0 } }); // No timeout
+            const response = await axios.post(
+                GEMINI_API_URL,
+                requestPayload,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': process.env.GEMINI_API_KEY || '',
+                    },
+                    timeout: 0 // No timeout
+                }
+            );
+
             const data = response.data;
+            let aiRes;
 
             if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
                 const rawResponseText = data.candidates[0].content.parts[0].text;
                 console.log(`AI Response: ${rawResponseText}`);
                 try {
                     aiRes = JSON.parse(rawResponseText);
-                } catch (error:any) {
-                    if (axios.isCancel(error)) {
-                        console.error('AI API request timed out.', error.message);
-                    } else {
-                        console.error('Error calling AI API:', error.message);
-                    }
-                    aiRes = { content: "There was an error processing that request.", emotion: null };
-                    rotateToNextForwarder();
+                } catch (parseError:any) {
+                    console.error('Error parsing AI response JSON:', parseError.message);
+                    aiRes = { content: "There was an error processing the AI's response.", emotion: null };
+                    // Depending on your logic, you might want to handle this differently
                 }
             } else {
-                console.error('Unexpected AI API response structure');
-                aiRes = { content: "Sorry, I couldn't generate a response.", emotion: null };
-                rotateToNextForwarder();
+                console.error('Unexpected AI API response structure:', data);
+                aiRes = { content: "Sorry, I couldn't generate a valid response.", emotion: null };
             }
+
+            // Now you can use the aiRes object
+            // For example: res.status(200).send(aiRes);
+
+
         } catch (error) {
-            console.error('Error calling AI API');
-            aiRes = { content: "There was an error processing that request.", emotion: null };
-            rotateToNextForwarder();
+            if (axios.isCancel(error)) {
+                console.error('AI API request timed out.', error.message);
+                // Handle timeout-specific logic here if needed
+            } else {
+                // Log detailed error information from the API if available
+                console.error('Error calling Generative Language API');
+            }
         }
 
         try {
