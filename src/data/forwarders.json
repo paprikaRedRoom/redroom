@@ -6,12 +6,12 @@
     },
     {
         "url": "https://odd-bettine-erminda5-d0c544d1.koyeb.app",
-        "isUsageLimited": false,
-        "selected": true
+        "isUsageLimited": true,
+        "selected": false
     },
     {
         "url": "https://dirty-terra-flowersorg-70dccdc9.koyeb.app",
-        "isUsageLimited": false,
+        "isUsageLimited": true,
         "selected": false
     }
 ]

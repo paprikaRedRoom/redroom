@@ -403,7 +403,7 @@ async function processChat(username: string, userMessage: string, history: { use
             const textWithEmotion = emotionTag ? `${emotionTag} ${aiRes.content}` : aiRes.content;
             console.log(`Text for TTS: ${textWithEmotion}`);
 
-            const audioStream = await elevenlabs.textToSpeech.convert('EiNlNiXeDU1pqqOPrYMO', {
+            const audioStream = await elevenlabs.textToSpeech.convert('hkfHEbBvdQFNX4uWHqRF', {
                 text: textWithEmotion,  // Include emotion tags directly in the text
                 modelId: 'eleven_v3',
                 outputFormat: 'mp3_44100_128',
